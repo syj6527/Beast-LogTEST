@@ -1,15 +1,12 @@
-// 🐯 비스트로그 (Beast Log) v0.7.0 — 도트(다마고치) 리스킨 · 🐯출현(WHO) / 🌦️상황(WHAT) 분리 + 상황 선택지화
+// 🐯 비스트로그 (Beast Log) v0.8.0 — NPC 친밀도/관계등급 + 인물도감 + 기록 접기
 // 버전 3곳 동시 갱신: (1) 이 주석, (2) BEASTLOG_VERSION, (3) manifest.json
 //
 // 제1원칙: 재밌음 + RP에 긍정적. 구조: 세계가 던지고 → 유저가 고르고 → 확장은 중계.
-// OFF-SCREEN: 유저 속마음은 패널 전용(주입 X). 저장: 게임=chat_metadata / 설정=extension_settings.
-//
-// 두 발생원 (이름=정체성):
-//   🐯 출현 (WHO)  = NPC/생물/사물이 나타나 상호작용(싸움·협력·도움·활동·줍기). category:'npc'. 도감 먹임.
-//   🌦️ 상황 (WHAT) = 상대 없는 환경/상황 사건(정전·택배·비). category:'situation'. 선택지로 반응.
-//   → 둘 다 선택지 기반 + 0~1건 주입. 색/뱃지로 시각 분리.
+// OFF-SCREEN: 유저 속마음은 패널 전용. 저장: 게임=chat_metadata / 설정=extension_settings.
+// 컨셉: "채팅 속 일상을 RPG 이벤트로 변환." 🐯 출현(WHO) / 🌦️ 상황(WHAT).
+// 관계 등급(터줏대감 정신): 낯선 → 몇 번 본 → 아는 사이일지도? → 친해진 → 죽마고우.
 
-const BEASTLOG_VERSION = '0.7.0';
+const BEASTLOG_VERSION = '0.8.0';
 const MODULE = 'beast_log';
 
 function getCtx() {
@@ -40,7 +37,7 @@ const STATE_KEY = 'beast_log_state';
 function defaultState() {
     return {
         uuid: cryptoId(), level: 1, xp: 0, title: '갓 들어온 손님', power: 0,
-        items: [], encounters: [], seenFoes: [],   // seenFoes → 나중에 터줏대감 도감
+        items: [], encounters: [], npcs: {},   // npcs[name] = {name,emoji,affinity,metCount,firstMet,tier,terjut}
         lastInjectTurn: -99, settings: { injectDefault: true },
     };
 }
@@ -51,6 +48,7 @@ function loadState() {
     if (e && typeof e === 'object') {
         const m = Object.assign(defaultState(), e);
         m.settings = Object.assign(defaultState().settings, e.settings || {});
+        m.npcs = e.npcs || {};
         return m;
     }
     const fresh = defaultState();
@@ -65,6 +63,17 @@ function saveState(s) {
     else if (ctx.saveMetadata) ctx.saveMetadata();
 }
 let STATE = defaultState();
+
+// ── 관계 등급 (터줏대감 정신) ──
+const REL_TIERS = [
+    { min: 80, label: '죽마고우' },
+    { min: 50, label: '친해진 사이' },
+    { min: 25, label: '아는 사이일지도?' },
+    { min: 10, label: '몇 번 본 사이' },
+    { min: 0, label: '낯선 사이' },
+];
+function relTier(aff) { for (const t of REL_TIERS) { if (aff >= t.min) return t.label; } return '낯선 사이'; }
+function affinityDelta(kind) { return ({ help: 2, cooperate: 3, activity: 1, interact: 0, loot: 0, flee: 0, attack: 0 })[kind] || 0; }
 
 // ── 텀(쿨다운) ──
 function getChatLen() { const c = getCtx(); return (c && Array.isArray(c.chat)) ? c.chat.length : 0; }
@@ -84,7 +93,7 @@ function getProfiles() {
     return (cm && Array.isArray(cm.profiles)) ? cm.profiles : [];
 }
 
-// ── [STUB] 🐯 출현 (WHO) ──  TODO(3): generateQuietPrompt 로 장면 맞춰 생성
+// ── [STUB] 🐯 출현 / 🌦️ 상황 / 판정 ──  TODO(3): generateQuietPrompt
 function generateAppearStub(_s) {
     const pool = [
         { category: 'npc', emoji: '🪳', title: '야생의 바퀴벌레가 나타났다', foe: '바퀴벌레', difficulty: 2,
@@ -98,8 +107,6 @@ function generateAppearStub(_s) {
     ];
     return pool[Math.floor(Math.random() * pool.length)];
 }
-
-// ── [STUB] 🌦️ 상황 (WHAT) ──  TODO(3): 채팅 맥락 맞춰 생성
 function generateSituationStub(_s) {
     const pool = [
         { category: 'situation', emoji: '📦', title: '택배가 도착했다', desc: '아무도 시킨 적 없는 택배다.',
@@ -111,11 +118,9 @@ function generateSituationStub(_s) {
     ];
     return pool[Math.floor(Math.random() * pool.length)];
 }
-
-// ── [STUB] 판정 + 양면 속마음 (kind 기반) ── foe=단정 / user=추측형(may/can)
 function resolveByKind(item, kind) {
     if (kind === 'flee') return { result: '회피', exp: 1, drop: null, inner: {
-        foe: '상황은 떠나는 뒷모습을 멀뚱히 바라봤다.', user: '당신은 현명한 판단이었다고... 아마 스스로 우겼을 것이다.' } };
+        foe: '상대는 떠나는 뒷모습을 멀뚱히 바라봤다.', user: '당신은 현명한 판단이었다고... 아마 스스로 우겼을 것이다.' } };
     if (kind === 'help') return { result: '도움', exp: 3, drop: null, inner: {
         foe: '상대는 의외로 고마워하는 눈치였다.', user: '당신은 괜히 멋쩍었을지도 모른다.' } };
     if (kind === 'cooperate') return { result: '협력', exp: 4, drop: null, inner: {
@@ -135,7 +140,7 @@ function resolveByKind(item, kind) {
     };
 }
 
-function applyOutcome(item, choiceLabel, outcome) {
+function applyOutcome(item, choiceLabel, outcome, kind) {
     STATE.xp += outcome.exp || 0;
     const entry = {
         id: cryptoId(), no: STATE.encounters.length + 1, category: item.category || 'npc',
@@ -145,7 +150,20 @@ function applyOutcome(item, choiceLabel, outcome) {
     };
     STATE.encounters.unshift(entry);
     if (outcome.drop) { STATE.items.unshift(Object.assign({ id: cryptoId(), verdict: '' }, outcome.drop)); STATE.power += 1; }
-    if (item.foe && !STATE.seenFoes.includes(item.foe)) STATE.seenFoes.push(item.foe);   // 도감 씨앗
+
+    // NPC 영속화 + 친밀도 + 관계 등급
+    if (item.foe) {
+        const reg = STATE.npcs[item.foe] || { name: item.foe, emoji: item.emoji, affinity: 0, metCount: 0, firstMet: getChatLen(), tier: '낯선 사이', terjut: false };
+        const before = reg.tier;
+        reg.metCount += 1;
+        reg.affinity += affinityDelta(kind);
+        reg.tier = relTier(reg.affinity);
+        reg.terjut = reg.metCount >= 5;
+        STATE.npcs[item.foe] = reg;
+        if (reg.tier !== before) flash(`${reg.emoji} ${reg.name} — '${reg.tier}' (관계 상승!)`);
+        else if (reg.terjut && reg.metCount === 5) flash(`${reg.emoji} ${reg.name} 터줏대감 등극!`);
+    }
+
     levelCheck();
     saveState(STATE);
     renderAll();
@@ -257,14 +275,20 @@ function buildFull() {
             <label><span>📥 자동 감지 (입구)</span><input type="checkbox" class="bl-t-auto"></label>
           </div>
           <div class="bl-cd-row"><span>텀 (주입 간격)</span><input type="number" class="bl-cd-input" min="0" max="20"><span>턴</span></div>
-          <div class="bl-full-rolls">
-            <button class="bl-roll2">🐯 출현</button>
-            <button class="bl-rand2">🌦️ 상황</button>
+          <div class="bl-full-rolls"><button class="bl-roll2">🐯 출현</button><button class="bl-rand2">🌦️ 상황</button></div>
+
+          <div class="bl-acc">
+            <div class="bl-acc-head"><h3>오늘의 기록</h3><span class="bl-rule"></span><span class="bl-enc-cnt num"></span><span class="bl-chev">▾</span></div>
+            <div class="bl-acc-body"><div class="bl-enc-list"></div></div>
           </div>
-          <div class="bl-sec"><h3>오늘의 기록</h3><span class="bl-rule"></span><span class="bl-enc-cnt num"></span></div>
-          <div class="bl-enc-list"></div>
-          <div class="bl-sec"><h3>잡템 보관함</h3><span class="bl-rule"></span><span class="bl-junk-cnt num"></span></div>
-          <div class="bl-junk-list"></div>
+          <div class="bl-acc">
+            <div class="bl-acc-head"><h3>📖 인물 도감</h3><span class="bl-rule"></span><span class="bl-dex-cnt num"></span><span class="bl-chev">▾</span></div>
+            <div class="bl-acc-body"><div class="bl-dex-list"></div></div>
+          </div>
+          <div class="bl-acc">
+            <div class="bl-acc-head"><h3>잡템 보관함</h3><span class="bl-rule"></span><span class="bl-junk-cnt num"></span><span class="bl-chev">▾</span></div>
+            <div class="bl-acc-body"><div class="bl-junk-list"></div></div>
+          </div>
         </div>
       </div>`;
     document.body.appendChild(fullEl);
@@ -275,6 +299,7 @@ function buildFull() {
     fullEl.querySelector('.bl-cd-input').addEventListener('change', e => { EXT.cooldownTurns = Math.max(0, parseInt(e.target.value, 10) || 0); saveExt(); renderAll(); });
     fullEl.querySelector('.bl-roll2').addEventListener('click', onAppear);
     fullEl.querySelector('.bl-rand2').addEventListener('click', onSituation);
+    fullEl.querySelectorAll('.bl-acc-head').forEach(h => h.addEventListener('click', () => h.parentElement.classList.toggle('collapsed')));
     fullEl.addEventListener('click', e => { if (e.target === fullEl) showMini(); });
 }
 function renderFull() {
@@ -299,6 +324,18 @@ function renderFull() {
               <div class="bl-tk-foot"><span class="bl-chip">${escapeHtml(e.result)}</span><span class="bl-chip">EXP +${e.exp}</span>${e.drop ? `<span class="bl-chip">드롭 · ${escapeHtml(e.drop)}</span>` : ''}</div>
             </div>`).join('')
         : '<div class="bl-empty">아직 아무 일도 없었다. 조용한 하루다.</div>';
+
+    const npcArr = Object.values(STATE.npcs);
+    fullEl.querySelector('.bl-dex-cnt').textContent = '발견 ' + npcArr.length;
+    fullEl.querySelector('.bl-dex-list').innerHTML = npcArr.length
+        ? npcArr.map(n => `
+            <div class="bl-dex">
+              <span class="bl-dex-emoji">${n.emoji || '👤'}</span>
+              <span class="bl-dex-nm">${escapeHtml(n.name)}${n.terjut ? ' <span class="bl-terjut">터줏대감</span>' : ''}</span>
+              <span class="bl-dex-rel">${escapeHtml(n.tier)}</span>
+              <span class="bl-dex-met num">${n.metCount}번</span>
+            </div>`).join('')
+        : '<div class="bl-empty">아직 아무도 못 만났다.</div>';
 
     fullEl.querySelector('.bl-junk-cnt').textContent = '곁들임 ' + STATE.items.length;
     fullEl.querySelector('.bl-junk-list').innerHTML = STATE.items.length
@@ -370,12 +407,15 @@ function showChoicePopup(item) {
     const cat = item.category || 'npc';
     const choices = (item.choices && item.choices.length) ? item.choices
         : [{ label: '대응한다', kind: 'attack' }, { label: '지나친다', kind: 'flee' }];
+    let relLine = '';
+    if (item.foe && STATE.npcs[item.foe]) relLine = `<div class="bl-pop-rel">${escapeHtml(STATE.npcs[item.foe].tier)} · ${STATE.npcs[item.foe].metCount}번째 만남</div>`;
     const pop = document.createElement('div'); pop.id = 'beastlog-popup';
     pop.innerHTML = `
       <div class="bl-pop-card bl-cat-${cat}">
         <div class="bl-pop-badge">${cat === 'npc' ? '🐯 출현' : '🌦️ 상황'}</div>
         <div class="bl-pop-emoji">${item.emoji}</div>
         <div class="bl-pop-title">${escapeHtml(item.title)}${cat === 'npc' ? '!' : ''}</div>
+        ${relLine}
         ${item.desc ? `<div class="bl-pop-desc">${escapeHtml(item.desc)}</div>` : ''}
         <div class="bl-pop-choices">${choices.map((c, i) => `<button data-i="${i}">${escapeHtml(c.label)}</button>`).join('')}</div>
         <button class="bl-pop-ignore" data-i="-1">무시</button>
@@ -384,7 +424,7 @@ function showChoicePopup(item) {
     pop.querySelectorAll('button').forEach(btn => btn.addEventListener('click', () => {
         const i = parseInt(btn.dataset.i, 10); closePopup();
         if (i < 0) return;
-        const c = choices[i]; applyOutcome(item, c.label, resolveByKind(item, c.kind));
+        const c = choices[i]; applyOutcome(item, c.label, resolveByKind(item, c.kind), c.kind);
     }));
 }
 function closePopup() { const p = document.getElementById('beastlog-popup'); if (p) p.remove(); }
@@ -397,7 +437,7 @@ function flash(msg) {
     if (!f) { f = document.createElement('div'); f.className = 'bl-flash'; host.appendChild(f); }
     f.textContent = msg; f.classList.add('show');
     clearTimeout(flashTimer);
-    flashTimer = setTimeout(() => f.classList.remove('show'), 1800);
+    flashTimer = setTimeout(() => f.classList.remove('show'), 1900);
 }
 function escapeHtml(s) {
     return String(s == null ? '' : s).replace(/[&<>"']/g, c =>
