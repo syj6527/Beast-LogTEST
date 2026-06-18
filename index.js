@@ -1,7 +1,7 @@
-// 🐯 비스트로그 (Beast Log) v0.18.0 — 미니 재배치(상단바 마스코트+Lv+XP / 좌:상태·소지품접힘 / 우:출현·상황) + 폰트·디버그 유지
+// 🐯 비스트로그 (Beast Log) v0.18.1 — 팝업도 인라인 최상위 고정(모바일에서 뒤로 깔리는 것 방지)
 // 버전 3곳 동시 갱신: (1) 이 주석, (2) BEASTLOG_VERSION, (3) manifest.json
 
-const BEASTLOG_VERSION = '0.18.0';
+const BEASTLOG_VERSION = '0.18.1';
 const MODULE = 'beast_log';
 let LAST_ERROR = '';
 try { console.log('[비스트로그] script loaded v' + BEASTLOG_VERSION); } catch (e) { /* noop */ }
@@ -735,7 +735,7 @@ function showChoicePopup(item) {
         <div class="bl-pop-choices">${choices.map((c, i) => `<button data-i="${i}">${escapeHtml(c.label)}</button>`).join('')}</div>
         <button class="bl-pop-ignore" data-i="-1">무시</button>
       </div>`;
-    document.body.appendChild(pop);
+    mountPopup(pop);
     pop.querySelectorAll('button').forEach(btn => btn.addEventListener('click', async () => {
         const i = parseInt(btn.dataset.i, 10);
         if (i < 0) { closePopup(); return; }
@@ -759,7 +759,7 @@ function showResultPopup(entry) {
         <div class="bl-result-rumor"><button class="bl-reveal2">🗞️ 뒷소문 보기</button></div>
         <button class="bl-pop-ignore bl-result-ok">일지에 저장됨 · 확인</button>
       </div>`;
-    document.body.appendChild(pop);
+    mountPopup(pop);
     pop.querySelector('.bl-reveal2').addEventListener('click', () => {
         pop.querySelector('.bl-result-rumor').innerHTML = afterBlock(entry);
         const en = STATE.encounters.find(x => x.id === entry.id); if (en) { en.revealed = true; saveState(STATE); }
@@ -767,6 +767,16 @@ function showResultPopup(entry) {
     pop.querySelector('.bl-result-ok').addEventListener('click', closePopup);
 }
 function closePopup() { const p = document.getElementById('beastlog-popup'); if (p) p.remove(); }
+// 팝업을 CSS 없이도 최상위 전체화면으로 고정 (모바일에서 뒤로 깔리는 것 방지)
+function mountPopup(pop) {
+    Object.assign(pop.style, {
+        position: 'fixed', top: '0', left: '0', right: '0', bottom: '0',
+        zIndex: '2147483647', display: 'flex', alignItems: 'flex-start',
+        justifyContent: 'center', overflowY: 'auto', padding: '16px',
+        background: 'rgba(60,48,28,.32)',
+    });
+    document.body.appendChild(pop);
+}
 function renameNpc(key) {
     const n = STATE.npcs[key]; if (!n) return;
     closePopup();
@@ -777,7 +787,7 @@ function renameNpc(key) {
         <input class="bl-rename-input" type="text" maxlength="20" placeholder="예: 감자" value="${escapeHtml(n.nickname || '')}">
         <div class="bl-rename-btns"><button class="bl-rename-cancel">취소</button><button class="bl-rename-ok">확인</button></div>
       </div>`;
-    document.body.appendChild(pop);
+    mountPopup(pop);
     const input = pop.querySelector('.bl-rename-input');
     setTimeout(() => { try { input.focus(); } catch (e) { /* noop */ } }, 60);
     const commit = () => { n.nickname = stripTags(input.value).slice(0, 20); saveState(STATE); closePopup(); renderAll(); };
@@ -793,7 +803,7 @@ function showConfirm(title, msg, onYes) {
         <div class="bl-alarm-msg">${escapeHtml(msg)}</div>
         <div class="bl-rename-btns"><button class="bl-rename-cancel">취소</button><button class="bl-confirm-yes">확인</button></div>
       </div>`;
-    document.body.appendChild(pop);
+    mountPopup(pop);
     pop.querySelector('.bl-rename-cancel').addEventListener('click', closePopup);
     pop.querySelector('.bl-confirm-yes').addEventListener('click', () => { closePopup(); try { onYes(); } catch (e) { /* noop */ } });
 }
@@ -801,7 +811,7 @@ function showLoading(msg) {
     closePopup();
     const pop = document.createElement('div'); pop.id = 'beastlog-popup';
     pop.innerHTML = `<div class="bl-pop-card bl-loading"><div class="bl-load-emoji">${evoStage(STATE.level).emoji}</div><div class="bl-load-msg">${escapeHtml(msg)}</div><div class="bl-load-dots">. . .</div></div>`;
-    document.body.appendChild(pop);
+    mountPopup(pop);
 }
 function showAlarm(title, msg) {
     closePopup();
@@ -812,7 +822,7 @@ function showAlarm(title, msg) {
         <div class="bl-alarm-msg">${escapeHtml(msg)}</div>
         <button class="bl-pop-ignore bl-alarm-ok">확인</button>
       </div>`;
-    document.body.appendChild(pop);
+    mountPopup(pop);
     pop.querySelector('.bl-alarm-ok').addEventListener('click', closePopup);
 }
 
@@ -874,7 +884,7 @@ function showDiagPopup() {
         <div class="bl-diag-box">${escapeHtml(lines.join('\n'))}</div>
         <button class="bl-pop-ignore bl-alarm-ok">닫기</button>
       </div>`;
-    document.body.appendChild(pop);
+    mountPopup(pop);
     pop.querySelector('.bl-alarm-ok').addEventListener('click', closePopup);
 }
 
