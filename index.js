@@ -1,7 +1,7 @@
-// 🐯 비스트로그 (Beast Log) v0.18.2 — 팝업·풀패널을 html에 마운트(서랍 transform 회피) + 모바일 좌표 무시·CSS env() 위임
+// 🐯 비스트로그 (Beast Log) v0.18.3 — 진단을 설정창 안에 직접 표시(팝업 안 떠도 무조건 보임)
 // 버전 3곳 동시 갱신: (1) 이 주석, (2) BEASTLOG_VERSION, (3) manifest.json
 
-const BEASTLOG_VERSION = '0.18.2';
+const BEASTLOG_VERSION = '0.18.3';
 const MODULE = 'beast_log';
 let LAST_ERROR = '';
 try { console.log('[비스트로그] script loaded v' + BEASTLOG_VERSION); } catch (e) { /* noop */ }
@@ -674,12 +674,14 @@ function buildSettings(container) {
           </select></label>
           <div class="bls-ver">🐯 Beast Log v${BEASTLOG_VERSION} · 확장 메뉴(🪄) 또는 미니창 📖 로 열기</div>
           <div class="bls-row"><span>🐞 디버그 (콘솔 없이 상태 확인)</span><button id="bls-diag" class="bls-diag-btn">진단 보기</button></div>
+          <pre id="bls-diag-out" class="bls-diag-out" style="display:none"></pre>
         </div>
       </div>`;
     container.appendChild(wrap);
     refreshProfileOptions();
     wrap.querySelector('#bls-profile').addEventListener('change', e => { EXT.connectionProfile = e.target.value; saveExt(); });
-    const dgb = wrap.querySelector('#bls-diag'); if (dgb) dgb.addEventListener('click', showDiagPopup);
+    const dgb = wrap.querySelector('#bls-diag'); const dgo = wrap.querySelector('#bls-diag-out');
+    if (dgb && dgo) dgb.addEventListener('click', () => { dgo.textContent = diagText(); dgo.style.display = 'block'; });
     const dsel = wrap.querySelector('#bls-depth');
     if (dsel) { dsel.value = EXT.contextDepth || 'balance'; dsel.addEventListener('change', e => { EXT.contextDepth = e.target.value; saveExt(); }); }
     setTimeout(refreshProfileOptions, 1500);
@@ -864,9 +866,9 @@ function diag() {
     try { console.log('[비스트로그] DIAG ' + JSON.stringify(d)); } catch (e) { /* noop */ }
     return d;
 }
-function showDiagPopup() {
+function diagText() {
     const d = diag();
-    const lines = [
+    return [
         'Beast Log v' + d.v,
         '─────────────',
         'inDom      : ' + d.inDom,
@@ -882,12 +884,14 @@ function showDiagPopup() {
         '─────────────',
         'lastError  :',
         d.lastError,
-    ];
+    ].join('\n');
+}
+function showDiagPopup() {
     closePopup();
     const pop = document.createElement('div'); pop.id = 'beastlog-popup';
     pop.innerHTML = `<div class="bl-pop-card bl-cat-npc">
         <div class="bl-pop-badge">🐞 진단</div>
-        <div class="bl-diag-box">${escapeHtml(lines.join('\n'))}</div>
+        <div class="bl-diag-box">${escapeHtml(diagText())}</div>
         <button class="bl-pop-ignore bl-alarm-ok">닫기</button>
       </div>`;
     mountPopup(pop);

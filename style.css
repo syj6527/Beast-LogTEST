@@ -240,5 +240,6 @@
 .bl-rename-cancel { background: var(--bl-card); color: var(--bl-ink); }
 .bl-diag-box { font-family: 'Galmuri11', monospace; font-size: 10.5px; line-height: 1.7; color: var(--bl-ink); background: var(--bl-card); border: 2px solid var(--bl-line); border-radius: 9px; padding: 10px; white-space: pre-wrap; word-break: break-all; user-select: text; -webkit-user-select: text; margin-bottom: 12px; }
 #beastlog-settings .bls-diag-btn { font-family: 'Galmuri11', monospace; font-size: 11px; padding: 5px 12px; border: 2px solid var(--bl-edge); background: var(--bl-card2); border-radius: 8px; cursor: pointer; color: var(--bl-ink); }
+#beastlog-settings .bls-diag-out { font-family: 'Galmuri11', monospace; font-size: 11px; line-height: 1.7; white-space: pre-wrap; word-break: break-all; background: rgba(0,0,0,.05); border: 1px solid rgba(0,0,0,.18); border-radius: 8px; padding: 10px; margin: 8px 0 0; max-height: 340px; overflow: auto; -webkit-user-select: text; user-select: text; }
 
 @media (prefers-reduced-motion: reduce) { #beastlog-console *, #beastlog-popup *, #beastlog-full *, .bl-pet-emoji, .bl-load-emoji { animation: none !important; transition: none !important; } }
