@@ -1,7 +1,7 @@
-// 🐯 비스트로그 (Beast Log) v0.18.3 — 진단을 설정창 안에 직접 표시(팝업 안 떠도 무조건 보임)
+// 🐯 비스트로그 (Beast Log) v0.19.0 — 미니 상태창=풀카드 압축(마스코트 탭 변경+이름+Lv) + Galmuri 도트 폰트 복구
 // 버전 3곳 동시 갱신: (1) 이 주석, (2) BEASTLOG_VERSION, (3) manifest.json
 
-const BEASTLOG_VERSION = '0.18.3';
+const BEASTLOG_VERSION = '0.19.0';
 const MODULE = 'beast_log';
 let LAST_ERROR = '';
 try { console.log('[비스트로그] script loaded v' + BEASTLOG_VERSION); } catch (e) { /* noop */ }
@@ -344,6 +344,7 @@ function syncControls() {
     }
 }
 function pickMascot(key) { if (MASCOTS[key]) { EXT.mascot = key; saveExt(); renderAll(); } }
+function cycleMascot() { const i = MASCOT_KEYS.indexOf(EXT.mascot); EXT.mascot = MASCOT_KEYS[(i + 1) % MASCOT_KEYS.length]; saveExt(); renderAll(); }
 function pips(emoji, n) { return emoji.repeat(Math.max(0, n)) + '·'.repeat(Math.max(0, 3 - n)); }
 function npcLine() {
     if (!STATE.currentNpc || !STATE.npcs[STATE.currentNpc]) return '<span class="bl-slot-empty">아무도 없음</span>';
@@ -378,8 +379,7 @@ function buildConsole() {
     Object.assign(consoleEl.style, { position: 'fixed', left: '12px', right: '12px', zIndex: '2147483000', maxWidth: '392px', margin: '0 auto' });
     consoleEl.innerHTML = `
       <div class="bl-topbar">
-        <span class="bl-pet-emoji-mini"></span><span class="bl-lv num"></span>
-        <span class="bl-xmini"><i></i></span>
+        <span class="bl-grip">⠿</span><span class="bl-title">비스트로그</span>
         <span class="bl-spacer"></span>
         <span class="bl-inject"><span class="bl-lab">📤</span><span class="bl-sw" data-on="true"></span></span>
         <span class="bl-up" title="기록·설정 열기">📖</span>
@@ -387,7 +387,12 @@ function buildConsole() {
       <div class="bl-panes">
         <div class="bl-pane-l">
           <div class="bl-mini-status">
+            <div class="bl-ms-row">
+              <span class="bl-pet-emoji-mini" title="탭하면 마스코트 변경"></span>
+              <span class="bl-ms-id"><b class="bl-pet-name"></b><span class="bl-lv num"></span></span>
+            </div>
             <div class="bl-status"><span class="bl-st-mood"></span><span class="bl-st-hunger"></span><span class="bl-st-hp"></span></div>
+            <div class="bl-xmini"><i></i></div>
             <div class="bl-ms-rep">⭐ <b class="num bl-rep"></b> · 🎒 <b class="num bl-itemcnt"></b></div>
           </div>
           <div class="bl-mini-bag collapsed">
@@ -401,8 +406,9 @@ function buildConsole() {
           <div class="bl-cooldown num"></div>
         </div>
       </div>`;
-    document.body.appendChild(consoleEl);
+    (document.documentElement || document.body).appendChild(consoleEl);
     consoleEl.querySelector('.bl-sw').addEventListener('click', () => setInjectDefault(!STATE.settings.injectDefault));
+    consoleEl.querySelector('.bl-pet-emoji-mini').addEventListener('click', cycleMascot);
     consoleEl.querySelector('.bl-roll').addEventListener('click', onAppear);
     consoleEl.querySelector('.bl-randevent').addEventListener('click', onSituation);
     consoleEl.querySelector('.bl-up').addEventListener('click', showFull);
@@ -417,19 +423,25 @@ function wireDrag(bar) {
     bar.addEventListener('pointerdown', e => {
         if (e.target.closest('button, .bl-sw, .bl-up, .bl-inject')) return;
         const r = consoleEl.getBoundingClientRect();
-        st = { dx: e.clientX - r.left, dy: e.clientY - r.top };
-        consoleEl.style.left = r.left + 'px'; consoleEl.style.top = r.top + 'px';
-        consoleEl.style.right = 'auto'; consoleEl.style.bottom = 'auto'; consoleEl.style.margin = '0';
+        st = { sx: e.clientX, sy: e.clientY, dx: e.clientX - r.left, dy: e.clientY - r.top, moved: false };
         try { bar.setPointerCapture(e.pointerId); } catch (err) { /* noop */ }
     });
     bar.addEventListener('pointermove', e => {
         if (!st) return;
+        if (!st.moved) {
+            if (Math.abs(e.clientX - st.sx) < 6 && Math.abs(e.clientY - st.sy) < 6) return; // 임계값: 탭 보호
+            st.moved = true;
+            consoleEl.style.right = 'auto'; consoleEl.style.bottom = 'auto'; consoleEl.style.margin = '0';
+        }
         const w = consoleEl.offsetWidth, h = consoleEl.offsetHeight;
         const nx = Math.max(4, Math.min(window.innerWidth - w - 4, e.clientX - st.dx));
         const ny = Math.max(4, Math.min(window.innerHeight - h - 4, e.clientY - st.dy));
         consoleEl.style.left = nx + 'px'; consoleEl.style.top = ny + 'px';
     });
-    const end = () => { if (st) { EXT.consolePos = { left: parseInt(consoleEl.style.left, 10), top: parseInt(consoleEl.style.top, 10) }; saveExt(); st = null; } };
+    const end = () => {
+        if (st && st.moved && window.innerWidth > 600) { EXT.consolePos = { left: parseInt(consoleEl.style.left, 10), top: parseInt(consoleEl.style.top, 10) }; saveExt(); }
+        st = null;
+    };
     bar.addEventListener('pointerup', end);
     bar.addEventListener('pointercancel', end);
 }
@@ -449,13 +461,14 @@ function applyConsolePos() {
     consoleEl.style.right = 'auto'; consoleEl.style.bottom = 'auto'; consoleEl.style.margin = '0';
 }
 function ensureMounted() {
-    try { if (consoleEl && document.body && !document.body.contains(consoleEl)) document.body.appendChild(consoleEl); }
+    try { const root = document.documentElement || document.body; if (consoleEl && root && !root.contains(consoleEl)) root.appendChild(consoleEl); }
     catch (e) { /* noop */ }
 }
 function renderConsole() {
     if (!consoleEl) return;
     const evo = evoStage(STATE.level), need = STATE.level * 100;
     consoleEl.querySelector('.bl-pet-emoji-mini').textContent = evo.emoji;
+    consoleEl.querySelector('.bl-pet-name').textContent = evo.name;
     consoleEl.querySelector('.bl-lv').textContent = 'Lv.' + String(STATE.level).padStart(2, '0');
     consoleEl.querySelector('.bl-st-mood').textContent = pips('😊', STATE.mood);
     consoleEl.querySelector('.bl-st-hunger').textContent = pips('🍖', STATE.hunger);
