@@ -1,7 +1,7 @@
-// 🐯 비스트로그 (Beast Log) v0.19.1 — 미니창 top 픽셀 직접 고정(하단 기준박스 뒤집힘 회피) + 리사이즈 재계산 + 진단 inDom 정정
+// 🐯 비스트로그 (Beast Log) v0.19.2 — 큰 창·팝업 전체화면을 inset:0 대신 100vw/vh로 (꼭대기 0높이 기준박스 회피) → 모바일에서 큰 창 정상 표시
 // 버전 3곳 동시 갱신: (1) 이 주석, (2) BEASTLOG_VERSION, (3) manifest.json
 
-const BEASTLOG_VERSION = '0.19.1';
+const BEASTLOG_VERSION = '0.19.2';
 const MODULE = 'beast_log';
 let LAST_ERROR = '';
 try { console.log('[비스트로그] script loaded v' + BEASTLOG_VERSION); } catch (e) { /* noop */ }
@@ -492,7 +492,7 @@ function buildFull() {
     if (fullEl) return;
     fullEl = document.createElement('div');
     fullEl.id = 'beastlog-full';
-    Object.assign(fullEl.style, { position: 'fixed', top: '0', left: '0', right: '0', bottom: '0', zIndex: '2147483400' });
+    Object.assign(fullEl.style, { position: 'fixed', top: '0', left: '0', right: 'auto', bottom: 'auto', width: '100vw', height: '100vh', zIndex: '2147483400', boxSizing: 'border-box' });
     fullEl.style.display = 'none';
     fullEl.innerHTML = `
       <div class="bl-full-card">
@@ -794,10 +794,11 @@ function closePopup() { const p = document.getElementById('beastlog-popup'); if 
 // 팝업을 CSS 없이도 최상위 전체화면으로 고정 + <html>에 붙여 body transform/서랍에 안 묻히게
 function mountPopup(pop) {
     Object.assign(pop.style, {
-        position: 'fixed', top: '0', left: '0', right: '0', bottom: '0',
+        position: 'fixed', top: '0', left: '0', right: 'auto', bottom: 'auto',
+        width: '100vw', height: '100vh',
         zIndex: '2147483647', display: 'flex', alignItems: 'flex-start',
         justifyContent: 'center', overflowY: 'auto', padding: '16px',
-        background: 'rgba(60,48,28,.32)',
+        background: 'rgba(60,48,28,.32)', boxSizing: 'border-box',
     });
     (document.documentElement || document.body).appendChild(pop);
 }
