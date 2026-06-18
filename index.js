@@ -1,7 +1,7 @@
-// 🐯 비스트로그 (Beast Log) v0.18.1 — 팝업도 인라인 최상위 고정(모바일에서 뒤로 깔리는 것 방지)
+// 🐯 비스트로그 (Beast Log) v0.18.2 — 팝업·풀패널을 html에 마운트(서랍 transform 회피) + 모바일 좌표 무시·CSS env() 위임
 // 버전 3곳 동시 갱신: (1) 이 주석, (2) BEASTLOG_VERSION, (3) manifest.json
 
-const BEASTLOG_VERSION = '0.18.1';
+const BEASTLOG_VERSION = '0.18.2';
 const MODULE = 'beast_log';
 let LAST_ERROR = '';
 try { console.log('[비스트로그] script loaded v' + BEASTLOG_VERSION); } catch (e) { /* noop */ }
@@ -374,8 +374,8 @@ function buildConsole() {
     if (consoleEl) return;
     consoleEl = document.createElement('div');
     consoleEl.id = 'beastlog-console';
-    // CSS-독립 위치 폴백 (모바일에서 style.css 미적용/ env() 미지원이어도 화면에 뜨도록)
-    Object.assign(consoleEl.style, { position: 'fixed', left: '12px', right: '12px', bottom: '14px', zIndex: '2147483000', maxWidth: '392px', margin: '0 auto' });
+    // CSS-독립 위치 폴백. bottom은 인라인으로 박지 않고 CSS env()에 위임(safe-area)
+    Object.assign(consoleEl.style, { position: 'fixed', left: '12px', right: '12px', zIndex: '2147483000', maxWidth: '392px', margin: '0 auto' });
     consoleEl.innerHTML = `
       <div class="bl-topbar">
         <span class="bl-pet-emoji-mini"></span><span class="bl-lv num"></span>
@@ -435,8 +435,13 @@ function wireDrag(bar) {
 }
 function applyConsolePos() {
     if (!consoleEl) return;
+    // 모바일(폭 600 이하): 저장 좌표 무시, 무조건 하단 기본 배치 (bottom은 CSS env()에 위임)
+    if (window.innerWidth <= 600) {
+        consoleEl.style.left = '12px'; consoleEl.style.right = '12px'; consoleEl.style.top = 'auto'; consoleEl.style.bottom = ''; consoleEl.style.margin = '0 auto';
+        return;
+    }
     const p = EXT.consolePos;
-    if (!p || typeof p.left !== 'number') { consoleEl.style.left = '12px'; consoleEl.style.right = '12px'; consoleEl.style.top = 'auto'; consoleEl.style.bottom = '14px'; consoleEl.style.margin = '0 auto'; return; }
+    if (!p || typeof p.left !== 'number') { consoleEl.style.left = '12px'; consoleEl.style.right = '12px'; consoleEl.style.top = 'auto'; consoleEl.style.bottom = ''; consoleEl.style.margin = '0 auto'; return; }
     const w = consoleEl.offsetWidth || 340, h = consoleEl.offsetHeight || 220;
     const left = Math.max(4, Math.min(window.innerWidth - w - 4, p.left));
     const top = Math.max(4, Math.min(window.innerHeight - h - 4, p.top));
@@ -471,6 +476,7 @@ function buildFull() {
     if (fullEl) return;
     fullEl = document.createElement('div');
     fullEl.id = 'beastlog-full';
+    Object.assign(fullEl.style, { position: 'fixed', top: '0', left: '0', right: '0', bottom: '0', zIndex: '2147483400' });
     fullEl.style.display = 'none';
     fullEl.innerHTML = `
       <div class="bl-full-card">
@@ -515,7 +521,7 @@ function buildFull() {
           </div>
         </div>
       </div>`;
-    document.body.appendChild(fullEl);
+    (document.documentElement || document.body).appendChild(fullEl);
     fullEl.querySelector('.bl-min').addEventListener('click', showMini);
     fullEl.querySelector('.bl-close').addEventListener('click', hideHud);
     fullEl.querySelector('.bl-t-inject').addEventListener('change', e => setInjectDefault(e.target.checked));
@@ -767,7 +773,7 @@ function showResultPopup(entry) {
     pop.querySelector('.bl-result-ok').addEventListener('click', closePopup);
 }
 function closePopup() { const p = document.getElementById('beastlog-popup'); if (p) p.remove(); }
-// 팝업을 CSS 없이도 최상위 전체화면으로 고정 (모바일에서 뒤로 깔리는 것 방지)
+// 팝업을 CSS 없이도 최상위 전체화면으로 고정 + <html>에 붙여 body transform/서랍에 안 묻히게
 function mountPopup(pop) {
     Object.assign(pop.style, {
         position: 'fixed', top: '0', left: '0', right: '0', bottom: '0',
@@ -775,7 +781,7 @@ function mountPopup(pop) {
         justifyContent: 'center', overflowY: 'auto', padding: '16px',
         background: 'rgba(60,48,28,.32)',
     });
-    document.body.appendChild(pop);
+    (document.documentElement || document.body).appendChild(pop);
 }
 function renameNpc(key) {
     const n = STATE.npcs[key]; if (!n) return;

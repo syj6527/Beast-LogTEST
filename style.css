@@ -72,7 +72,7 @@
 .bl-empty { font-size: 11px; color: var(--bl-ink-soft); padding: 4px 2px; }
 
 /* ===== 팝업 ===== */
-#beastlog-popup { position: fixed; inset: 0; z-index: 2147483600; display: flex; align-items: flex-start; justify-content: center; background: rgba(60,48,28,.32); padding: 16px; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
+#beastlog-popup { position: fixed; inset: 0; z-index: 2147483647; display: flex; align-items: flex-start; justify-content: center; background: rgba(60,48,28,.32); padding: 16px; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
 .bl-pop-card { margin: auto; max-height: calc(100dvh - 32px); overflow-y: auto; -webkit-overflow-scrolling: touch; background-color: var(--bl-card2); background-image: var(--bl-dot); background-size: 4px 4px; border: 3px solid var(--bl-edge); border-radius: 12px; padding: 16px; width: min(322px, 88vw); box-shadow: 4px 5px 0 var(--bl-shadow), 0 16px 32px -20px rgba(60,48,28,.5); }
 .bl-pop-badge { display: block; width: fit-content; margin: 0 auto 8px; font-family: var(--bl-chrome); font-size: 11px; padding: 3px 11px; border: 2px solid var(--bl-edge); border-radius: 8px; background: var(--bl-card); }
 .bl-pop-emoji { font-size: 38px; text-align: center; margin-bottom: 4px; }
