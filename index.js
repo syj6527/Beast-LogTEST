@@ -1,11 +1,11 @@
-// 🐯 비스트로그 (Beast Log) v0.15.0 — 도감 타입 분류(생물/인물/사물) + 🕰️ 변화 로그(타임라인)
+// 🐯 비스트로그 (Beast Log) v0.15.1 — 모바일 안정성 패치 (팝업 스크롤·웹뷰 입력·한글 줄바꿈·세이프에어리어)
 // 버전 3곳 동시 갱신: (1) 이 주석, (2) BEASTLOG_VERSION, (3) manifest.json
 //
 // 제1원칙: 재밌음 + RP에 긍정적. 컨셉: "채팅 속 일상 → 조우/상황/선택/소문/후일담."
 // 다마고치+동숲 톤. 전투 용어(결투/전투력) 안 씀. 잡템=웃김 / 떡밥=RP연료(주입). 아이템 사용 메카닉 없음.
 // OFF-SCREEN: 뒷소문(유저 쪽)은 패널 전용. 저장: 게임=chat_metadata / 설정=extension_settings.
 
-const BEASTLOG_VERSION = '0.15.0';
+const BEASTLOG_VERSION = '0.15.1';
 const MODULE = 'beast_log';
 
 function getCtx() {
@@ -708,8 +708,21 @@ function showResultPopup(entry) {
 function closePopup() { const p = document.getElementById('beastlog-popup'); if (p) p.remove(); }
 function renameNpc(key) {
     const n = STATE.npcs[key]; if (!n) return;
-    const v = window.prompt(`${n.name}의 이름을 지어주세요 (예: 감자)`, n.nickname || '');
-    if (v != null) { n.nickname = stripTags(v).slice(0, 20); saveState(STATE); renderAll(); }
+    closePopup();
+    const pop = document.createElement('div'); pop.id = 'beastlog-popup';
+    pop.innerHTML = `<div class="bl-pop-card bl-cat-npc">
+        <div class="bl-pop-badge">✏️ 이름 짓기</div>
+        <div class="bl-pop-title">${escapeHtml(n.emoji || '')} ${escapeHtml(n.name)}</div>
+        <input class="bl-rename-input" type="text" maxlength="20" placeholder="예: 감자" value="${escapeHtml(n.nickname || '')}">
+        <div class="bl-rename-btns"><button class="bl-rename-cancel">취소</button><button class="bl-rename-ok">확인</button></div>
+      </div>`;
+    document.body.appendChild(pop);
+    const input = pop.querySelector('.bl-rename-input');
+    setTimeout(() => { try { input.focus(); } catch (e) { /* noop */ } }, 60);
+    const commit = () => { n.nickname = stripTags(input.value).slice(0, 20); saveState(STATE); closePopup(); renderAll(); };
+    pop.querySelector('.bl-rename-ok').addEventListener('click', commit);
+    pop.querySelector('.bl-rename-cancel').addEventListener('click', closePopup);
+    input.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); commit(); } });
 }
 function showLoading(msg) {
     closePopup();

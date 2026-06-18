@@ -15,11 +15,13 @@
 #beastlog-console, #beastlog-console *, #beastlog-popup, #beastlog-popup *,
 #beastlog-full, #beastlog-full *, #beastlog-settings .beast-log-settings * { box-sizing: border-box; }
 #beastlog-console, #beastlog-popup, #beastlog-full { font-family: var(--bl-prose); color: var(--bl-ink); }
+#beastlog-console, #beastlog-popup, #beastlog-full, #beastlog-console *, #beastlog-popup *, #beastlog-full * { -webkit-tap-highlight-color: transparent; }
+#beastlog-console button, #beastlog-popup button, #beastlog-full button, .bl-sw, .bl-hero-pet, .bl-acc-head, .bl-tk-head, .bl-dex-head { touch-action: manipulation; }
 .num { font-family: 'Galmuri11', monospace; }
 
 /* ===== 미니 콘솔 (올인원) ===== */
 #beastlog-console {
-  position: fixed; left: 12px; right: 12px; bottom: 14px; z-index: 9000; max-width: 392px; margin: 0 auto;
+  position: fixed; left: 12px; right: 12px; bottom: calc(14px + env(safe-area-inset-bottom, 0px)); z-index: 9000; max-width: 392px; margin: 0 auto;
   background-color: var(--bl-card2); background-image: var(--bl-dot); background-size: 4px 4px;
   border: 3px solid var(--bl-edge); border-radius: 12px;
   box-shadow: 3px 4px 0 var(--bl-shadow), 0 10px 22px -16px rgba(84,68,42,.5); overflow: hidden;
@@ -82,8 +84,8 @@
 .bl-jchip.bait { border-color: var(--bl-rose-d); background: #F7E7E1; }
 
 /* ===== 팝업 (조우 / 결과 / 로딩 / 알람) ===== */
-#beastlog-popup { position: fixed; inset: 0; z-index: 9500; display: flex; align-items: center; justify-content: center; background: rgba(60,48,28,.32); padding: 16px; }
-.bl-pop-card { background-color: var(--bl-card2); background-image: var(--bl-dot); background-size: 4px 4px; border: 3px solid var(--bl-edge); border-radius: 12px; padding: 16px; width: min(322px, 88vw); box-shadow: 4px 5px 0 var(--bl-shadow), 0 16px 32px -20px rgba(60,48,28,.5); }
+#beastlog-popup { position: fixed; inset: 0; z-index: 9500; display: flex; align-items: flex-start; justify-content: center; background: rgba(60,48,28,.32); padding: 16px; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
+.bl-pop-card { margin: auto; max-height: calc(100dvh - 32px); overflow-y: auto; -webkit-overflow-scrolling: touch; background-color: var(--bl-card2); background-image: var(--bl-dot); background-size: 4px 4px; border: 3px solid var(--bl-edge); border-radius: 12px; padding: 16px; width: min(322px, 88vw); box-shadow: 4px 5px 0 var(--bl-shadow), 0 16px 32px -20px rgba(60,48,28,.5); }
 .bl-pop-badge { display: block; width: fit-content; margin: 0 auto 8px; font-family: var(--bl-chrome); font-size: 11px; padding: 3px 11px; border: 2px solid var(--bl-edge); border-radius: 8px; }
 .bl-pop-emoji { font-size: 38px; text-align: center; margin-bottom: 4px; }
 .bl-pop-title { font-family: var(--bl-chrome); font-size: 14px; line-height: 1.5; color: #4A3C24; text-align: center; margin-bottom: 8px; }
@@ -117,7 +119,7 @@
 .bl-alarm-ok { margin-top: 14px !important; border: 2px solid var(--bl-rose-d) !important; border-radius: 9px; padding: 9px 22px; color: var(--bl-rose-d) !important; background: var(--bl-card2); box-shadow: 2px 2px 0 var(--bl-shadow); }
 
 /* ===== 풀버전 (기록·설정) ===== */
-#beastlog-full { position: fixed; inset: 0; z-index: 9400; display: flex; align-items: flex-start; justify-content: center; background: rgba(60,48,28,.34); padding: 14px 12px; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+#beastlog-full { position: fixed; inset: 0; z-index: 9400; display: flex; align-items: flex-start; justify-content: center; background: rgba(60,48,28,.34); padding: 14px 12px; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
 .bl-full-card { width: min(404px, 96vw); max-height: calc(100vh - 28px); max-height: calc(100dvh - 28px); display: flex; flex-direction: column; background-color: var(--bl-card2); background-image: var(--bl-dot); background-size: 4px 4px; border: 3px solid var(--bl-edge); border-radius: 14px; overflow: hidden; box-shadow: 5px 6px 0 var(--bl-shadow), 0 24px 50px -28px rgba(60,48,28,.55); }
 .bl-full-sign { flex: 0 0 auto; display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; background: var(--bl-point); border-bottom: 3px solid var(--bl-edge); }
 .bl-full-logo { font-family: var(--bl-chrome); font-size: 14px; color: #4A3C24; }
@@ -199,5 +201,18 @@
 #beastlog-settings .bls-row span { font-size: 13px; }
 #beastlog-settings .bls-ver { margin-top: 10px; font-family: 'Galmuri11', monospace; font-size: 10px; opacity: .7; }
 .bl-wand-ic { text-align: center; }
+
+/* ===== 모바일 안정성 ===== */
+.bl-full-body { overscroll-behavior: contain; }
+.bl-pop-title, .bl-pop-desc, .bl-tk-title, .bl-tk-desc, .bl-af-line, .bl-af-rare, .bl-af-none,
+.bl-dex-nm, .bl-dex-mem, .bl-dex-logrow, .bl-alarm-title, .bl-alarm-msg, .bl-load-msg,
+.bl-pet-name, .bl-foe, .bl-empty { word-break: keep-all; overflow-wrap: anywhere; }
+.bl-rename-input { width: 100%; font-family: var(--bl-chrome); font-size: 15px; padding: 11px; border: 2px solid var(--bl-edge); border-radius: 9px; background: #fff; color: var(--bl-ink); margin-bottom: 12px; }
+.bl-rename-input:focus { outline: none; border-color: var(--bl-point-d); }
+.bl-rename-btns { display: flex; gap: 8px; }
+.bl-rename-btns button { flex: 1; font-family: var(--bl-chrome); font-size: 12px; padding: 12px; border: 2px solid var(--bl-edge); border-radius: 9px; cursor: pointer; box-shadow: 2px 2px 0 var(--bl-shadow); }
+.bl-rename-btns button:active { transform: translate(2px,2px); box-shadow: none; }
+.bl-rename-ok { background: var(--bl-point-d); color: #fff; }
+.bl-rename-cancel { background: var(--bl-card); color: var(--bl-ink); }
 
 @media (prefers-reduced-motion: reduce) { #beastlog-console *, #beastlog-popup *, #beastlog-full *, .bl-pet-emoji, .bl-load-emoji { animation: none !important; transition: none !important; } }
