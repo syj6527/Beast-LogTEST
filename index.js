@@ -1,11 +1,11 @@
-// 🐯 비스트로그 (Beast Log) v0.14.0 — 살아있는 NPC 도감 (첫/최근 조우·현재 상태·특별 기억·이름·재조우)
+// 🐯 비스트로그 (Beast Log) v0.15.0 — 도감 타입 분류(생물/인물/사물) + 🕰️ 변화 로그(타임라인)
 // 버전 3곳 동시 갱신: (1) 이 주석, (2) BEASTLOG_VERSION, (3) manifest.json
 //
 // 제1원칙: 재밌음 + RP에 긍정적. 컨셉: "채팅 속 일상 → 조우/상황/선택/소문/후일담."
 // 다마고치+동숲 톤. 전투 용어(결투/전투력) 안 씀. 잡템=웃김 / 떡밥=RP연료(주입). 아이템 사용 메카닉 없음.
 // OFF-SCREEN: 뒷소문(유저 쪽)은 패널 전용. 저장: 게임=chat_metadata / 설정=extension_settings.
 
-const BEASTLOG_VERSION = '0.14.0';
+const BEASTLOG_VERSION = '0.15.0';
 const MODULE = 'beast_log';
 
 function getCtx() {
@@ -109,9 +109,9 @@ function getProfiles() {
 // ── [STUB] 폴백용 생성/판정 ──
 function generateAppearStub() {
     const pool = [
-        { category: 'npc', emoji: '🐕', title: '동네 개가 따라온다', foe: '동네 개', choices: [{ label: '쓰다듬는다', kind: 'activity' }, { label: '간식을 준다', kind: 'help' }, { label: '모른 척 걷는다', kind: 'flee' }] },
-        { category: 'npc', emoji: '🥄', title: '길바닥에서 무언가 빛났다', foe: null, choices: [{ label: '줍는다', kind: 'loot' }, { label: '발로 차본다', kind: 'interact' }, { label: '그냥 지나친다', kind: 'flee' }] },
-        { category: 'npc', emoji: '🐦', title: '새 한 마리가 빤히 본다', foe: '참견하는 새', choices: [{ label: '말을 건다', kind: 'help' }, { label: '같이 본다', kind: 'activity' }, { label: '시비를 건다', kind: 'attack' }] },
+        { category: 'npc', emoji: '🐕', title: '동네 개가 따라온다', foe: '동네 개', foeType: 'creature', choices: [{ label: '쓰다듬는다', kind: 'activity' }, { label: '간식을 준다', kind: 'help' }, { label: '모른 척 걷는다', kind: 'flee' }] },
+        { category: 'npc', emoji: '🛋️', title: '버려진 소파가 보인다', foe: '버려진 소파', foeType: 'object', choices: [{ label: '앉아본다', kind: 'activity' }, { label: '살펴본다', kind: 'interact' }, { label: '지나친다', kind: 'flee' }] },
+        { category: 'npc', emoji: '🐦', title: '새 한 마리가 빤히 본다', foe: '참견하는 새', foeType: 'creature', choices: [{ label: '말을 건다', kind: 'help' }, { label: '같이 본다', kind: 'activity' }, { label: '시비를 건다', kind: 'attack' }] },
     ];
     return pick(pool);
 }
@@ -197,7 +197,8 @@ function buildAppearPrompt() {
     return `너는 RP 채팅에 어울리는 "조우 이벤트"를 만든다. 이 장면에 자연스럽게 나타날 법한 대상(인물/생물/사물) 하나.
 ${RULES_FIT}
 선택지 3개(서로 다른 대응), 각 kind는 help/cooperate/activity/loot/interact/flee/attack 중 하나. attack은 괜히 시비 거는 선택.
-형식: {"category":"npc","emoji":"이모지 하나","title":"~가 나타났다/다가온다 류 한 문장","foe":"대상 이름(사물이면 null)","choices":[{"label":"...","kind":"..."},{"label":"...","kind":"..."},{"label":"...","kind":"flee"}]}
+foeType은 대상이 사람이면 "person", 동물/생물이면 "creature", 물건/사물이면 "object".
+형식: {"category":"npc","emoji":"이모지 하나","title":"~가 나타났다/다가온다/보인다 류 한 문장","foe":"대상 이름(없으면 null)","foeType":"person|creature|object","choices":[{"label":"...","kind":"..."},{"label":"...","kind":"..."},{"label":"...","kind":"flee"}]}
 ${knownNpcsHint()}
 [대화 맥락]
 ${getConvo()}`;
@@ -232,6 +233,7 @@ function normalizeEvent(o, cat) {
         emoji: String(o.emoji || (cat === 'situation' ? '🌦️' : '❓')).slice(0, 4),
         title: String(o.title || (cat === 'situation' ? '무언가 일어났다' : '무언가 나타났다')),
         foe: (o.foe && o.foe !== 'null') ? String(o.foe) : null,
+        foeType: ['person', 'creature', 'object'].includes(o.foeType) ? o.foeType : 'creature',
         desc: o.desc ? String(o.desc) : '',
         choices,
     };
@@ -277,14 +279,21 @@ function applyOutcome(item, choiceLabel, outcome, kind) {
 
     if (item.foe) {
         const isNew = !STATE.npcs[item.foe];
-        const reg = STATE.npcs[item.foe] || { name: item.foe, nickname: '', emoji: item.emoji, affinity: 0, metCount: 0, firstMet: nowDate(), lastMet: nowDate(), tier: '낯선 사이', state: '평범함', memory: '', terjut: false };
+        const reg = STATE.npcs[item.foe] || { name: item.foe, nickname: '', emoji: item.emoji, dexType: 'creature', affinity: 0, metCount: 0, firstMet: nowDate(), lastMet: nowDate(), tier: '낯선 사이', state: '평범함', memory: '', log: [], terjut: false };
         const before = reg.tier;
         const disp = reg.nickname || reg.name;
         reg.metCount += 1; reg.affinity += affDelta; reg.lastMet = nowDate();
         if (isNew) reg.firstMet = nowDate();
+        if (item.foeType) reg.dexType = item.foeType;
         reg.tier = relTier(reg.affinity); reg.terjut = reg.metCount >= 5;
+        const stateChanged = outcome.npcState && outcome.npcState !== reg.state;
         if (outcome.npcState) reg.state = outcome.npcState;
         if (outcome.npcMemory) reg.memory = outcome.npcMemory;
+        // 변화 로그 (타임라인)
+        reg.log = reg.log || [];
+        const note = isNew ? '처음 발견' : (outcome.npcMemory || (stateChanged ? `상태: ${outcome.npcState}` : (choiceLabel + ' — ' + outcome.result)));
+        reg.log.unshift({ date: nowDate(), note: String(note).slice(0, 70) });
+        if (reg.log.length > 14) reg.log.length = 14;
         STATE.npcs[item.foe] = reg;
         STATE.currentNpc = item.foe;
         if (reg.tier !== before) flash(`${reg.emoji} ${disp} — '${reg.tier}'!`);
@@ -501,6 +510,30 @@ function afterBlock(e) {
 function chipsHtml(e) {
     return `${e.affDelta ? `<span class="bl-chip">❤️ ${e.affDelta > 0 ? '+' : ''}${e.affDelta}</span>` : ''}${e.rep ? `<span class="bl-chip">⭐ ${e.rep > 0 ? '+' : ''}${e.rep}</span>` : ''}<span class="bl-chip">EXP +${e.exp}</span>${e.drop ? `<span class="bl-chip">${e.dropBait ? '🎣 ' : ''}${escapeHtml(e.drop)}</span>` : ''}`;
 }
+function dexCard(n) {
+    const disp = n.nickname || n.name;
+    const logHtml = (n.log && n.log.length)
+        ? `<div class="bl-dex-log"><div class="bl-dex-logttl">🕰️ 변화 로그</div>${n.log.map(l => `<div class="bl-dex-logrow"><span class="num">${escapeHtml(l.date)}</span> ${escapeHtml(l.note)}</div>`).join('')}</div>` : '';
+    return `
+      <div class="bl-dex${n._open ? '' : ' collapsed'}" data-npc="${escapeHtml(n.name)}">
+        <div class="bl-dex-head">
+          <span class="bl-dex-emoji">${n.emoji || '👤'}</span>
+          <span class="bl-dex-nm">${escapeHtml(disp)}${n.terjut ? ' <span class="bl-terjut">터줏대감</span>' : ''}</span>
+          <span class="bl-dex-rel">${escapeHtml(n.tier)}</span>
+          <span class="bl-dex-chev">▾</span>
+        </div>
+        <div class="bl-dex-body">
+          <div class="bl-dex-row"><span>첫 조우</span><b class="num">${escapeHtml(n.firstMet || '기록 없음')}</b></div>
+          <div class="bl-dex-row"><span>최근 조우</span><b class="num">${escapeHtml(n.lastMet || '-')}</b></div>
+          <div class="bl-dex-row"><span>조우 횟수</span><b class="num">${n.metCount}번</b></div>
+          <div class="bl-dex-row"><span>현재 상태</span><b>${escapeHtml(n.state || '평범함')}</b></div>
+          <div class="bl-dex-mem">💭 특별 기억 — ${n.memory ? escapeHtml(n.memory) : '<span class="bl-dim">아직 없음</span>'}</div>
+          ${logHtml}
+          <button class="bl-dex-rename" data-npc="${escapeHtml(n.name)}">✏️ 이름 짓기</button>
+        </div>
+      </div>`;
+}
+const DEX_GROUPS = [{ key: 'creature', label: '🐾 생물' }, { key: 'person', label: '👤 인물' }, { key: 'object', label: '📦 사물' }];
 function renderFull() {
     if (!fullEl) return;
     fullEl.querySelector('.bl-t-inject').checked = STATE.settings.injectDefault;
@@ -523,26 +556,11 @@ function renderFull() {
     const npcArr = Object.values(STATE.npcs);
     fullEl.querySelector('.bl-dex-cnt').textContent = '발견 ' + npcArr.length;
     fullEl.querySelector('.bl-dex-list').innerHTML = npcArr.length
-        ? npcArr.map(n => {
-            const disp = n.nickname || n.name;
-            return `
-            <div class="bl-dex${n._open ? '' : ' collapsed'}" data-npc="${escapeHtml(n.name)}">
-              <div class="bl-dex-head">
-                <span class="bl-dex-emoji">${n.emoji || '👤'}</span>
-                <span class="bl-dex-nm">${escapeHtml(disp)}${n.terjut ? ' <span class="bl-terjut">터줏대감</span>' : ''}</span>
-                <span class="bl-dex-rel">${escapeHtml(n.tier)}</span>
-                <span class="bl-dex-chev">▾</span>
-              </div>
-              <div class="bl-dex-body">
-                <div class="bl-dex-row"><span>첫 조우</span><b class="num">${escapeHtml(n.firstMet || '기록 없음')}</b></div>
-                <div class="bl-dex-row"><span>최근 조우</span><b class="num">${escapeHtml(n.lastMet || '-')}</b></div>
-                <div class="bl-dex-row"><span>조우 횟수</span><b class="num">${n.metCount}번</b></div>
-                <div class="bl-dex-row"><span>현재 상태</span><b>${escapeHtml(n.state || '평범함')}</b></div>
-                <div class="bl-dex-mem">💭 특별 기억 — ${n.memory ? escapeHtml(n.memory) : '<span class="bl-dim">아직 없음</span>'}</div>
-                <button class="bl-dex-rename" data-npc="${escapeHtml(n.name)}">✏️ 이름 짓기</button>
-              </div>
-            </div>`;
-        }).join('')
+        ? DEX_GROUPS.map(g => {
+            const arr = npcArr.filter(n => (n.dexType || 'creature') === g.key);
+            if (!arr.length) return '';
+            return `<div class="bl-dex-grouphead">${g.label} <span class="num">${arr.length}</span></div>` + arr.map(dexCard).join('');
+        }).join('') || '<div class="bl-empty">아직 아무도 못 만났다.</div>'
         : '<div class="bl-empty">아직 아무도 못 만났다.</div>';
 
     fullEl.querySelector('.bl-junk-cnt').textContent = STATE.items.length + '개';

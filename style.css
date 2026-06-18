@@ -185,6 +185,12 @@
 .bl-dim { color: var(--bl-ink-soft); font-style: italic; }
 .bl-dex-rename { margin-top: 9px; font-family: var(--bl-chrome); border: 2px solid var(--bl-edge); background: var(--bl-card2); color: var(--bl-ink); padding: 7px 12px; font-size: 11px; cursor: pointer; border-radius: 8px; box-shadow: 1px 1px 0 var(--bl-shadow); }
 .bl-dex-rename:active { transform: translate(1px,1px); box-shadow: none; }
+.bl-dex-grouphead { font-family: var(--bl-chrome); font-size: 11px; color: var(--bl-point-d); margin: 4px 0 7px; padding-bottom: 4px; border-bottom: 2px solid var(--bl-line); }
+.bl-dex-grouphead .num { font-size: 9px; color: var(--bl-ink-soft); }
+.bl-dex-log { margin-top: 9px; border-top: 1px dashed var(--bl-line); padding-top: 8px; }
+.bl-dex-logttl { font-family: var(--bl-chrome); font-size: 10px; color: var(--bl-point-d); margin-bottom: 5px; }
+.bl-dex-logrow { font-family: var(--bl-prose); font-size: 11px; color: #6E5A38; line-height: 1.6; padding-left: 2px; }
+.bl-dex-logrow .num { font-size: 9px; color: var(--bl-ink-soft); margin-right: 5px; }
 
 .bl-junk-list { display: flex; flex-wrap: wrap; gap: 7px; }
 
