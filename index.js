@@ -1,7 +1,7 @@
-// 🐯 비스트로그 (Beast Log) v0.27.0 — 신규 마스코트 2종(🐰토끼·🐵원숭이) 상점 추가 + eyeBg(크림 얼굴 표정 호환). 병아리 진화아트(부화/닭 벼슬중앙) 시안 확정
+// 🐯 비스트로그 (Beast Log) v0.29.0 — 팝업 안닫힘 픽스(전체제거+배경탭닫기+중복실행방지) + 저장소위생(인카운터 캡, 챗전환시 기억 리프레시로 누수방지)
 // 버전 3곳 동시 갱신: (1) 이 주석, (2) BEASTLOG_VERSION, (3) manifest.json
 
-const BEASTLOG_VERSION = '0.27.0';
+const BEASTLOG_VERSION = '0.29.0';
 const MODULE = 'beast_log';
 let LAST_ERROR = '';
 try { console.log('[비스트로그] script loaded v' + BEASTLOG_VERSION); } catch (e) { /* noop */ }
@@ -38,8 +38,8 @@ const BL_SPRITES = {
   dog: { w:16, h:15, pal:{O:'#d6b280',C:'#f8eed6',D:'#966836'}, rows:['................','..KK........KK..','.KODK......KDOK.','.KOOOKKKKKKOOOK.','.KOOOOOOOOOOOOK.','.KOOOOOOOOOOOOK.','.KOOOOOOOOOOOOK.','.KODDOOOOOOOOOK.','.KODKKOOOOKKOOK.','.KOOKKOOOOKKOOK.','.KOOOOOOOOOOOOK.','.KOOOOCKKCOOOOK.','.KOOOOCCCCOOOOK.','..KKKKCCCCKKKK..','................'] },
   hamster: { w:16, h:15, pal:{O:'#e9c468',C:'#fbf3dd'}, rows:['................','..KK........KK..','.KOCK......KCOK.','.KOOOKKKKKKOOOK.','.KOOOOOOOOOOOOK.','.KOOOOOOOOOOOOK.','.KOOOOOOOOOOOOK.','.KOOOOOOOOOOOOK.','.KOOKKOOOOKKOOK.','.KOOKKOOOOKKOOK.','.KCCOOOOOOOOCCK.','.KCOOOCKKCOOOCK.','.KOOOOCCCCOOOOK.','..KKKKCCCCKKKK..','................'] },
   chick: { w:16, h:15, pal:{O:'#f6d442',Y:'#ee882a',P:'#f09e9e'}, rows:['................','................','...KKKKKKKKKK...','..KOOOOOOOOOOK..','.KOOOOOOOOOOOOK.','.KOOOOOOOOOOOOK.','.KOOOOOOOOOOOOK.','.KOOOOOOOOOOOOK.','.KOOKKOOOOKKOOK.','.KPPKKOOOOKKPPK.','.KOOOOOOOOOOOOK.','.KOOOOYYYYOOOOK.','.KOOOOOYYOOOOOK.','..KKKKKKKKKKKK..','................'] },
-  rabbit: { w:16, h:15, pal:{O:'#f4efe2',P:'#f09e9e',C:'#f7ebce'}, rows:['...KK......KK...','..KPPK....KPPK..','..KPPK....KPPK..','..KPPK....KPPK..','..KPPK....KPPK..','.KKOOKKKKKKOOKK.','.KOOOOOOOOOOOOK.','.KOOOOOOOOOOOOK.','.KOOKKOOOOKKOOK.','.KOOKKOOOOKKOOK.','.KOOOOOOOOOOOOK.','.KPOOOOKKOOOOPK.','.KOOOOOOOOOOOOK.','..KKKKKKKKKKKK..','................'] },
-  monkey: { w:16, h:15, eyeBg:'C', pal:{O:'#a87848',C:'#f7ebce'}, rows:['................','...KKKKKKKKKK...','..KOOOOOOOOOOK..','.KOOOOOOOOOOOOK.','.KOOOOOOOOOOOOK.','KKOOCCCCCCCCOOKK','KOKOCCCCCCCCOKOK','KKOCCCCCCCCCCOKK','.KOCKKCCCCKKCOK.','.KOCKKCCCCKKCOK.','.KOCCCCCCCCCCOK.','.KOCCCKKKKCCCOK.','.KOOCCCCCCCCOOK.','..KKOOOOOOOOKK..','...KKKKKKKKKK...'] },
+  rabbit: { w:16, h:15, pal:{O:'#fbfbf7',P:'#f3a6a6'}, rows:['.KKKK......KKKK.','.KOPK......KPOK.','.KOPK......KPOK.','.KOPK......KPOK.','.KOOK......KOOK.','.KOOKKKKKKKKOOK.','.KOOOOOOOOOOOOK.','.KOOOOOOOOOOOOK.','.KOOKKOOOOKKOOK.','.KOOKKOOOOKKOOK.','.KOOOOOOOOOOOOK.','.KPOOOOKKOOOOPK.','.KOOOOOOOOOOOOK.','..KKKKKKKKKKKK..','................'] },
+  monkey: { w:16, h:15, eyeBg:'C', pal:{O:'#aa7a4a',C:'#f7ebce'}, rows:['................','...KKKKKKKKKK...','..KOOOOOOOOOOK..','.KOOOOOOOOOOOOK.','.KOOOOOOOOOOOOK.','KKOOCCCCCCCCOOKK','KOKOCCCCCCCCOKOK','KKOCCCCCCCCCCOKK','.KOCKKCCCCKKCOK.','.KOCKKCCCCKKCOK.','.KOCCCCCCCCCCOK.','.KOCCCKKKKCCCOK.','.KOOCCCCCCCCOOK.','..KKOOOOOOOOKK..','...KKKKKKKKKK...'] },
 };
 const MONO_INK = new Set(['K', 'B', 'D', 'Y', 'P', 'N']);
 // 표정: 눈 자리(2x2 기본)를 지우고 표정별 픽셀로 다시 그림
@@ -165,13 +165,17 @@ function normalizeJob(o) {
         mood: (o.mood && o.mood !== 'null') ? String(o.mood).slice(0, 120) : '',
     };
 }
+let _blBusy = false;
 async function onWork() {
+    if (_blBusy) return;
     if (!canWork()) { flash(`아직 지쳤다 — ${jobRemaining()}턴 쉬어야`); return; }
+    _blBusy = true;
     showLoading(pick(JOB_LOAD));
     try {
         const txt = await llmGenerate(buildJobPrompt(), 4096);
         closePopup(); applyJob(normalizeJob(parseLLMJson(txt)));
     } catch (err) { closePopup(); if (!handleLlmError(err)) applyJob({ job: '벽돌 나르기', report: '허리만 나갔다. 사장은 어디론가 사라졌다.', pay: 15000, incident: '사장 잠적', mood: '...' }); }
+    finally { _blBusy = false; }
 }
 function applyJob(job) {
     STATE.money = (STATE.money || 0) + job.pay;
@@ -248,6 +252,7 @@ function defaultState() {
         items: [], encounters: [], npcs: {},
         currentNpc: null, currentSituation: null,
         money: 0, owned: ['tiger', 'cat', 'dog'], lastJobTurn: -99, lastJob: null,
+        pins: [],
         lastInjectTurn: -99, settings: { injectDefault: true },
     };
 }
@@ -273,6 +278,51 @@ function saveState(s) {
     else if (ctx.saveMetadata) ctx.saveMetadata();
 }
 let STATE = defaultState();
+
+// ── 백업 / 복원 / 초기화 ──
+function exportData() {
+    try {
+        const blob = { _beastlog: BEASTLOG_VERSION, exportedAt: new Date().toISOString(), state: STATE };
+        const json = JSON.stringify(blob, null, 2);
+        const a = document.createElement('a');
+        a.href = 'data:application/json;charset=utf-8,' + encodeURIComponent(json);
+        a.download = `beastlog-backup-${new Date().toISOString().slice(0, 10)}.json`;
+        document.documentElement.appendChild(a); a.click(); a.remove();
+        flash('💾 백업 파일 저장됨');
+    } catch (e) { flash('백업 실패'); blDebug('export', e); }
+}
+function importData() {
+    const inp = document.createElement('input');
+    inp.type = 'file'; inp.accept = 'application/json,.json';
+    inp.addEventListener('change', () => {
+        const f = inp.files && inp.files[0]; if (!f) return;
+        const r = new FileReader();
+        r.onload = () => {
+            try {
+                const blob = JSON.parse(String(r.result));
+                const s = blob && blob.state ? blob.state : blob;
+                if (!s || typeof s !== 'object') throw new Error('형식 오류');
+                showConfirm('백업 불러오기', '지금 데이터를 백업으로 덮어쓸까요? 되돌릴 수 없어요.', () => {
+                    STATE = Object.assign(defaultState(), s);
+                    STATE.settings = Object.assign(defaultState().settings, s.settings || {});
+                    STATE.npcs = s.npcs || {};
+                    saveState(STATE); renderAll(); refreshMemory();
+                    flash('📂 백업 복원됨');
+                });
+            } catch (e) { flash('불러오기 실패 — 파일 확인'); blDebug('import', e); }
+        };
+        r.readAsText(f);
+    });
+    document.documentElement.appendChild(inp); inp.click(); inp.remove();
+}
+function resetAll() {
+    showConfirm('완전 초기화', '레벨·돈·도감·일지·가방·관계 전부 처음으로 돌립니다. 되돌릴 수 없어요. 백업부터 받는 걸 권장!', () => {
+        STATE = defaultState();
+        EXT.mascot = 'tiger'; saveExt();
+        saveState(STATE); renderAll(); refreshMemory();
+        flash('🔄 처음으로 초기화됨');
+    });
+}
 
 // ── 텀 ──
 function getChatLen() { const c = getCtx(); return (c && Array.isArray(c.chat)) ? c.chat.length : 0; }
@@ -503,7 +553,8 @@ function applyOutcome(item, choiceLabel, outcome, kind) {
         inner: outcome.inner, after: (outcome.after || rollAfter()), _noNews: pick(NO_NEWS), revealed: false, open: false,
     };
     STATE.encounters.unshift(entry);
-    if (outcome.drop) STATE.items.unshift(Object.assign({ id: cryptoId(), rarity, itemType }, outcome.drop));
+    if (STATE.encounters.length > 150) STATE.encounters.length = 150;
+    if (outcome.drop) { STATE.items.unshift(Object.assign({ id: cryptoId(), rarity, itemType }, outcome.drop)); if (STATE.items.length > 80) STATE.items.length = 80; }
 
     if (item.foe) {
         const isNew = !STATE.npcs[item.foe];
@@ -574,11 +625,44 @@ function sceneMatch(n, scene) {
     return terms.some(t => scene.includes(String(t).toLowerCase()));
 }
 function daysSince(ts) { return ts ? Math.floor((Date.now() - ts) / 86400000) : null; }
+function isPinned(key) { return (STATE.pins || []).includes(key); }
+function pinBtn(key) {
+    const off = STATE.settings.injectDefault ? '' : ' disabled';
+    return `<button class="bl-pin${isPinned(key) ? ' on' : ''}" data-pin="${escapeHtml(key)}"${off} title="${STATE.settings.injectDefault ? '기억에 주입/해제' : '세팅에서 흔적 남기기를 켜야 함'}">📌</button>`;
+}
+function pinMemory(key) {
+    if (!STATE.settings.injectDefault) { flash('세팅에서 🌱 흔적 남기기를 켜주세요'); return; }
+    STATE.pins = STATE.pins || [];
+    const i = STATE.pins.indexOf(key);
+    if (i >= 0) STATE.pins.splice(i, 1); else STATE.pins.push(key);
+    saveState(STATE); renderAll(); refreshMemory();
+    flash(i >= 0 ? '기억에서 내림' : '📌 기억에 고정됨');
+}
+function pinnedLines() {
+    const out = [];
+    for (const key of (STATE.pins || [])) {
+        const ci = key.indexOf(':'); const t = key.slice(0, ci); const id = key.slice(ci + 1);
+        if (t === 'npc') {
+            const n = STATE.npcs[id]; if (!n) continue;
+            const d = daysSince(n.lastMetTs);
+            out.push(`· ${n.emoji || ''} ${n.nickname || n.name} (${n.tier})${n.lastPlace ? ' · ' + n.lastPlace : ''}${n.state && n.state !== '평범함' ? ' · ' + n.state : ''}${n.memory ? ' · ' + stripTags(n.memory) : ''}${d != null && d >= 1 ? ` · ${d}일 전` : ''}`);
+        } else if (t === 'enc') {
+            const e = (STATE.encounters || []).find(x => x.id === id); if (!e) continue;
+            out.push(`· ${e.emoji || ''} ${stripTags(e.after || e.desc || e.title)}`);
+        } else if (t === 'item') {
+            const it = (STATE.items || []).find(x => x.id === id); if (!it) continue;
+            out.push(`· ${it.emoji || '📦'} ${it.name}`);
+        }
+    }
+    return out;
+}
 function buildMemoryBlock() {
     const scene = currentSceneText();
-    const out = [];
+    const auto = [];
+    const pinnedKeys = new Set((STATE.pins || []).filter(k => k.startsWith('npc:')).map(k => k.slice(4)));
     for (const n of Object.values(STATE.npcs || {})) {
-        if (!sceneMatch(n, scene)) continue;            // 장소 안 맞으면 제외 (식당에서 다람쥐 금지)
+        if (pinnedKeys.has(n.name)) continue;            // 고정된 건 아래 핀 섹션에서
+        if (!sceneMatch(n, scene)) continue;             // 장소 안 맞으면 제외
         const name = n.nickname ? `${n.name}(별명 ${n.nickname})` : n.name;
         const place = n.lastPlace || n.firstPlace || '';
         const bits = [`${n.emoji || ''} ${name} — 관계: ${n.tier}`];
@@ -587,16 +671,24 @@ function buildMemoryBlock() {
         if (n.memory) bits.push(`기억: ${stripTags(n.memory)}`);
         const d = daysSince(n.lastMetTs);
         if (d != null && d >= 1) bits.push(`마지막으로 본 지 ${d}일`);
-        out.push('· ' + bits.join(' / '));
-        if (out.length >= 4) break;
+        auto.push('· ' + bits.join(' / '));
+        if (auto.length >= 4) break;
     }
-    if (!out.length) return '';
-    return `[비스트로그 — 지금 이 장소에서 떠오를 수 있는 것들]
-※ 아래는 현재 장면의 환경과 맞아떨어지는, 이미 아는 대상들이다.
-※ 자연스러울 때 {{char}}가 먼저 알아보거나 떠올려도 좋다. ("저 다람쥐, 전에 본 놈 아니냐" 처럼) — 관계 단계에 맞는 반응으로.
-※ 관계가 차가우면(경계/불신/피함) 그 대상은 {{char}}/주변을 피하거나 경계하고, 따뜻하면(익숙함/단골) 반갑게 군다.
-※ 강제로 등장시키거나 장면을 가로채지 마라. 환경이 맞아 자연스러울 때만 슬쩍.
-${out.join('\n')}`;
+    const pins = pinnedLines();
+    if (!auto.length && !pins.length) return '';
+    let s = '';
+    if (auto.length) {
+        s += `[비스트로그 — 지금 이 장소에서 떠오를 수 있는 것들]
+※ 현재 장면의 환경과 맞아떨어지는, 이미 아는 대상들이다. 자연스러울 때 {{char}}가 먼저 알아보거나 떠올려도 좋다 ("저 다람쥐, 전에 본 놈 아니냐") — 관계 단계에 맞는 반응으로. 강제 등장/장면 가로채기 금지.
+${auto.join('\n')}`;
+    }
+    if (pins.length) {
+        if (s) s += '\n\n';
+        s += `[비스트로그 — 특별히 기억하는 것들]
+※ 유저가 직접 고정해 둔 기억이다. 장소와 무관하게, 흐름상 자연스러울 때 {{char}}가 떠올리거나 반영해도 좋다. 역시 강제하지 말 것.
+${pins.join('\n')}`;
+    }
+    return s;
 }
 function refreshMemory() {
     const ctx = getCtx();
@@ -675,11 +767,7 @@ function buildConsole() {
             </div>
             <div class="bl-status"><span class="bl-st-mood"></span><span class="bl-st-hunger"></span><span class="bl-st-hp"></span></div>
             <div class="bl-xmini"><i></i></div>
-            <div class="bl-ms-rep">⭐ <b class="num bl-rep"></b> · 🎒 <b class="num bl-itemcnt"></b></div>
-          </div>
-          <div class="bl-mini-bag collapsed">
-            <div class="bl-mb-h">🎒 소지품 <span class="bl-mb-cnt num"></span><button class="bl-bag-inject" title="떡밥 주입">📤</button><span class="bl-mb-chev">▾</span></div>
-            <div class="bl-bag-list"></div>
+            <div class="bl-ms-rep">⭐ <b class="num bl-rep"></b> · 💰 <b class="num bl-money"></b> · 🎒 <b class="num bl-itemcnt"></b></div>
           </div>
         </div>
         <div class="bl-pane-r">
@@ -689,6 +777,10 @@ function buildConsole() {
         </div>
       </div>
       <div class="bl-mini-slots">
+        <div class="bl-mini-bag collapsed">
+          <div class="bl-mb-h">🎒 소지품 <span class="bl-mb-cnt num"></span><button class="bl-bag-inject" title="떡밥 주입">📤</button><span class="bl-mb-chev">▾</span></div>
+          <div class="bl-bag-list"></div>
+        </div>
         <div class="bl-slot"><span class="bl-slot-h">📢 현재 상황</span><span class="bl-slot-v bl-sit-v"></span></div>
         <div class="bl-slot"><span class="bl-slot-h">👤 현재 조우</span><span class="bl-slot-v bl-npc-v"></span></div>
       </div>`;
@@ -765,6 +857,7 @@ function renderConsole() {
     consoleEl.querySelector('.bl-st-hp').textContent = pips('❤️', STATE.hp);
     consoleEl.querySelector('.bl-xmini i').style.width = Math.min(100, (STATE.xp / need) * 100) + '%';
     consoleEl.querySelector('.bl-rep').textContent = (STATE.rep > 0 ? '+' : '') + STATE.rep;
+    const mm = consoleEl.querySelector('.bl-money'); if (mm) mm.textContent = fmtMoney(STATE.money);
     consoleEl.querySelector('.bl-itemcnt').textContent = STATE.items.length;
     consoleEl.querySelector('.bl-sw').dataset.on = STATE.settings.injectDefault ? 'true' : 'false';
     consoleEl.querySelector('.bl-bag-list').innerHTML = bagPreviewHtml(3);
@@ -826,13 +919,17 @@ function buildFull() {
             <div class="bl-acc-head"><h3>🎒 가방</h3><span class="bl-rule"></span><span class="bl-junk-cnt num"></span><button class="bl-clear-btn bl-bag-clear" title="전체 비우기">🧹</button><span class="bl-chev">▾</span></div>
             <div class="bl-acc-body"><div class="bl-junk-list"></div></div>
           </div>
+          <button class="bl-main-reset">🔄 처음으로 (완전 초기화)</button>
           </div>
           <div class="bl-tab-panel" data-panel="work" hidden>
             <div class="bl-work">
               <div class="bl-money-bar">보유 <b class="num bl-work-money">0원</b></div>
               <button class="bl-work-go">🛠️ 알바 뛰기</button>
               <div class="bl-work-cd"></div>
-              <div class="bl-work-last"></div>
+              <div class="bl-acc bl-work-acc" hidden>
+                <div class="bl-acc-head"><h3>🛠️ 최근 알바</h3><span class="bl-rule"></span><span class="bl-chev">▾</span></div>
+                <div class="bl-acc-body"><div class="bl-work-last"></div></div>
+              </div>
               <div class="bl-work-tip">RP 주인공이 세계관에 맞는 알바를 뜀. 보수는 짜다. 가끔 사건 터짐. (알바하면 살짝 배고파짐)</div>
             </div>
           </div>
@@ -850,7 +947,15 @@ function buildFull() {
               <label><span>🎨 마스코트 흑백(도트라인)</span><input type="checkbox" class="bl-t-mono"></label>
               <label><span>📥 자동 감지 (입구)</span><input type="checkbox" class="bl-t-auto"></label>
             </div>
-            <div class="bl-cd-row"><span>텀 (주입 간격)</span><input type="number" class="bl-cd-input" min="0" max="20"><span>턴</span></div>
+            <div class="bl-cd-row"><span>텀 (알바·자동 간격)</span><input type="number" class="bl-cd-input" min="0" max="20"><span>턴</span></div>
+            <div class="bl-data-sec">
+              <div class="bl-data-ttl">💾 데이터</div>
+              <div class="bl-data-btns">
+                <button class="bl-data-export">백업 내보내기</button>
+                <button class="bl-data-import">백업 불러오기</button>
+              </div>
+              <button class="bl-data-reset">🔄 완전 초기화</button>
+            </div>
           </div>
         </div>
       </div>`;
@@ -876,10 +981,16 @@ function buildFull() {
     fullEl.querySelector('.bl-bag-clear').addEventListener('click', e => { e.stopPropagation(); clearItems(); });
     fullEl.querySelector('.bl-pet-pick').addEventListener('click', e => { const b = e.target.closest('.bl-pick-btn'); if (b) pickMascot(b.dataset.m); });
     fullEl.querySelector('.bl-work-go').addEventListener('click', onWork);
+    fullEl.querySelector('.bl-main-reset').addEventListener('click', resetAll);
+    fullEl.querySelector('.bl-data-export').addEventListener('click', exportData);
+    fullEl.querySelector('.bl-data-import').addEventListener('click', importData);
+    fullEl.querySelector('.bl-data-reset').addEventListener('click', resetAll);
     fullEl.querySelector('.bl-shop-list').addEventListener('click', e => { const b = e.target.closest('.bl-shop-buy'); if (b) buyMascot(b.dataset.m); });
     fullEl.querySelector('.bl-enc-list').addEventListener('click', e => {
         const rev = e.target.closest('.bl-reveal');
         if (rev) { const en = STATE.encounters.find(x => x.id === rev.dataset.id); if (en) { en.revealed = true; saveState(STATE); renderFull(); } return; }
+        const pinb = e.target.closest('.bl-pin');
+        if (pinb) { if (!pinb.disabled) pinMemory(pinb.dataset.pin); return; }
         const del = e.target.closest('.bl-tk-del');
         if (del) { e.stopPropagation(); deleteEncounter(del.dataset.id); return; }
         const head = e.target.closest('.bl-tk-head');
@@ -890,6 +1001,8 @@ function buildFull() {
         }
     });
     fullEl.querySelector('.bl-dex-list').addEventListener('click', e => {
+        const pinb = e.target.closest('.bl-pin');
+        if (pinb) { if (!pinb.disabled) pinMemory(pinb.dataset.pin); return; }
         const del = e.target.closest('.bl-dex-del');
         if (del) { deleteNpc(del.dataset.npc); return; }
         const rn = e.target.closest('.bl-dex-rename');
@@ -902,6 +1015,8 @@ function buildFull() {
         }
     });
     fullEl.querySelector('.bl-junk-list').addEventListener('click', e => {
+        const pinb = e.target.closest('.bl-pin');
+        if (pinb) { if (!pinb.disabled) pinMemory(pinb.dataset.pin); return; }
         const del = e.target.closest('.bl-item-del'); if (!del) return;
         deleteItem(del.dataset.id);
     });
@@ -945,7 +1060,7 @@ function dexCard(n) {
           <div class="bl-dex-row"><span>현재 상태</span><b>${escapeHtml(n.state || '평범함')}</b></div>
           <div class="bl-dex-mem">💭 특별 기억 — ${n.memory ? escapeHtml(n.memory) : '<span class="bl-dim">아직 없음</span>'}</div>
           ${logHtml}
-          <div class="bl-dex-btns"><button class="bl-dex-rename" data-npc="${escapeHtml(n.name)}">✏️ 이름 짓기</button><button class="bl-dex-del" data-npc="${escapeHtml(n.name)}" title="이 인물 삭제">🗑️ 삭제</button></div>
+          <div class="bl-dex-btns">${pinBtn('npc:' + n.name)}<button class="bl-dex-rename" data-npc="${escapeHtml(n.name)}">✏️ 이름 짓기</button><button class="bl-dex-del" data-npc="${escapeHtml(n.name)}" title="이 인물 삭제">🗑️ 삭제</button></div>
         </div>
       </div>`;
 }
@@ -969,7 +1084,9 @@ function renderFull() {
     const wm = fullEl.querySelector('.bl-work-money'); if (wm) wm.textContent = fmtMoney(STATE.money);
     const wcd = fullEl.querySelector('.bl-work-cd'); if (wcd) { const r = jobRemaining(); wcd.textContent = r > 0 ? `😮‍💨 ${r}턴 더 쉬어야` : '✅ 알바 가능'; }
     const wl = fullEl.querySelector('.bl-work-last');
-    if (wl) wl.innerHTML = STATE.lastJob ? `<div class="bl-work-lastttl">최근 알바 — ${escapeHtml(STATE.lastJob.job)}</div><div class="bl-work-lastrep">${escapeHtml(STATE.lastJob.report)}${STATE.lastJob.incident ? ' ⚠️ ' + escapeHtml(STATE.lastJob.incident) : ''} <b>(+${fmtMoney(STATE.lastJob.pay)})</b></div>` : '';
+    const wacc = fullEl.querySelector('.bl-work-acc');
+    if (wacc) wacc.hidden = !STATE.lastJob;
+    if (wl) wl.innerHTML = STATE.lastJob ? `<div class="bl-work-lastttl">${escapeHtml(STATE.lastJob.job)}</div><div class="bl-work-lastrep">${escapeHtml(STATE.lastJob.report)}${STATE.lastJob.incident ? ' ⚠️ ' + escapeHtml(STATE.lastJob.incident) : ''} <b>(+${fmtMoney(STATE.lastJob.pay)})</b></div>` : '';
     // 상점 탭
     const sm = fullEl.querySelector('.bl-shop-money'); if (sm) sm.textContent = fmtMoney(STATE.money);
     const sl = fullEl.querySelector('.bl-shop-list'); if (sl) sl.innerHTML = shopListHtml();
@@ -989,7 +1106,7 @@ function renderFull() {
               <div class="bl-tk-head"><span class="bl-tk-time num">${e.time || ''}</span><span class="bl-tk-emoji">${e.emoji}</span><span class="bl-tk-title">${escapeHtml(e.title)}</span>${e.rarity && e.rarity !== 'common' ? `<span class="bl-tk-rar">${RARITY[e.rarity].dot}</span>` : ''}<button class="bl-tk-del" data-id="${e.id}" title="삭제">🗑️</button><span class="bl-tk-chev">▾</span></div>
               <div class="bl-tk-body">
                 <div class="bl-tk-desc">${escapeHtml(e.desc)}</div>
-                <div class="bl-tk-foot">${chipsHtml(e)}</div>
+                <div class="bl-tk-foot">${chipsHtml(e)}${pinBtn('enc:' + e.id)}</div>
                 ${e.inner ? (e.revealed ? afterBlock(e) : `<button class="bl-reveal" data-id="${e.id}">🗞️ 뒷소문 보기</button>`) : ''}
               </div>
             </div>`).join('')
@@ -1007,7 +1124,7 @@ function renderFull() {
 
     fullEl.querySelector('.bl-junk-cnt').textContent = STATE.items.length + '개';
     fullEl.querySelector('.bl-junk-list').innerHTML = STATE.items.length
-        ? STATE.items.map(it => `<div class="bl-item-row">${itemChip(it)}<button class="bl-item-del" data-id="${it.id}" title="버리기">🗑️</button></div>`).join('')
+        ? STATE.items.map(it => `<div class="bl-item-row">${itemChip(it)}${pinBtn('item:' + it.id)}<button class="bl-item-del" data-id="${it.id}" title="버리기">🗑️</button></div>`).join('')
         : '<div class="bl-empty">텅 비었다.</div>';
 }
 
@@ -1105,20 +1222,24 @@ function buildWandMenu(menu) {
 
 // ── 루프 ──
 async function onAppear() {
+    if (_blBusy) return; _blBusy = true;
     showLoading(pick(LOAD_APPEAR));
     try {
         const txt = await llmGenerate(buildAppearPrompt(), 4096);
         const item = normalizeEvent(parseLLMJson(txt), 'npc');
         closePopup(); startEncounter(item);
     } catch (err) { closePopup(); if (!handleLlmError(err)) startEncounter(generateAppearStub()); }
+    finally { _blBusy = false; }
 }
 async function onSituation() {
+    if (_blBusy) return; _blBusy = true;
     showLoading(pick(LOAD_SIT));
     try {
         const txt = await llmGenerate(buildSituationPrompt(), 4096);
         const item = normalizeEvent(parseLLMJson(txt), 'situation');
         closePopup(); showChoicePopup(item, { stage: 1, max: 1, history: [], origItem: item });
     } catch (err) { closePopup(); if (!handleLlmError(err)) showChoicePopup(generateSituationStub()); }
+    finally { _blBusy = false; }
 }
 function startEncounter(item) {
     // 조우(npc)는 체인 ON이면 3박자, 아니면 1박자. 상황은 onSituation에서 1박자.
@@ -1198,9 +1319,9 @@ function showResultPopup(entry) {
     mountPopup(pop);
     pop.querySelector('.bl-result-ok').addEventListener('click', closePopup);
 }
-function closePopup() { const p = document.getElementById('beastlog-popup'); if (p) p.remove(); }
+function closePopup() { document.querySelectorAll('#beastlog-popup').forEach(p => p.remove()); }
 // 팝업을 CSS 없이도 최상위 전체화면으로 고정 + <html>에 붙여 body transform/서랍에 안 묻히게
-function mountPopup(pop) {
+function mountPopup(pop, dismissable) {
     Object.assign(pop.style, {
         position: 'fixed', top: '0', left: '0', right: 'auto', bottom: 'auto',
         width: '100vw', height: '100vh',
@@ -1208,6 +1329,7 @@ function mountPopup(pop) {
         justifyContent: 'center', overflowY: 'auto', padding: '16px',
         background: 'rgba(60,48,28,.32)', boxSizing: 'border-box',
     });
+    if (dismissable !== false) pop.addEventListener('click', e => { if (e.target === pop) closePopup(); });
     (document.documentElement || document.body).appendChild(pop);
 }
 function renameNpc(key) {
@@ -1244,7 +1366,7 @@ function showLoading(msg) {
     closePopup();
     const pop = document.createElement('div'); pop.id = 'beastlog-popup';
     pop.innerHTML = `<div class="bl-pop-card bl-loading"><div class="bl-load-emoji">${mascotSVG(48)}</div><div class="bl-load-msg">${escapeHtml(msg)}</div><div class="bl-load-dots">. . .</div></div>`;
-    mountPopup(pop);
+    mountPopup(pop, false);
 }
 function showAlarm(title, msg) {
     closePopup();
@@ -1327,7 +1449,7 @@ function registerEvents() {
     const ctx = getCtx();
     if (!ctx || !ctx.eventSource) return;
     const types = ctx.eventTypes || ctx.event_types || {};
-    if (types.CHAT_CHANGED) ctx.eventSource.on(types.CHAT_CHANGED, () => { STATE = loadState(); ensureMounted(); renderAll(); });
+    if (types.CHAT_CHANGED) ctx.eventSource.on(types.CHAT_CHANGED, () => { STATE = loadState(); ensureMounted(); renderAll(); refreshMemory(); });
 }
 
 function init() {

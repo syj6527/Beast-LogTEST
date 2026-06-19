@@ -48,6 +48,7 @@
 .bl-mini-slots .bl-slot-v { font-size: 11px; }
 .bl-pane-l { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
 .bl-pane-r { display: flex; flex-direction: column; gap: 7px; min-width: 0; }
+.bl-pane-r .bl-roll, .bl-pane-r .bl-randevent { flex: 1; }
 
 .bl-mini-status { background: var(--bl-card); border: 2px solid var(--bl-line); border-radius: 9px; padding: 8px 9px; }
 .bl-ms-row { display: flex; align-items: center; gap: 7px; margin-bottom: 6px; }
@@ -155,6 +156,22 @@
 .bl-job-report { font-size: 13px; line-height: 1.6; margin: 6px 0; }
 .bl-job-pay { font-family: var(--bl-chrome); font-size: 15px; color: #C2702A; text-align: center; margin: 10px 0; }
 .bl-job-mood { font-size: 12px; color: var(--bl-ink-soft); font-style: italic; text-align: center; }
+.bl-pin { font-size: 11px; background: var(--bl-card); border: 1.5px solid var(--bl-line); border-radius: 7px; padding: 3px 7px; cursor: pointer; opacity: .4; filter: grayscale(1); }
+.bl-pin.on { opacity: 1; filter: none; border-color: var(--bl-point-d); background: var(--bl-btn); }
+.bl-pin:disabled { opacity: .2; cursor: not-allowed; }
+.bl-pin:active:not(:disabled) { transform: translate(1px,1px); }
+.bl-tk-foot { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.bl-tk-foot .bl-pin { margin-left: auto; }
+.bl-item-row { display: flex; align-items: center; gap: 6px; }
+.bl-item-row .bl-pin { margin-left: auto; }
+.bl-data-sec { margin-top: 12px; border-top: 2px solid var(--bl-line); padding-top: 12px; }
+.bl-data-ttl { font-family: var(--bl-chrome); font-size: 11px; color: var(--bl-point-d); margin-bottom: 8px; }
+.bl-data-btns { display: flex; gap: 8px; margin-bottom: 8px; }
+.bl-data-btns button { flex: 1; font-family: var(--bl-chrome); font-size: 11px; color: var(--bl-ink); background: var(--bl-card); border: 2px solid var(--bl-line); border-radius: 9px; padding: 10px; cursor: pointer; }
+.bl-data-btns button:active { transform: translate(1px,1px); }
+.bl-data-reset, .bl-main-reset { width: 100%; font-family: var(--bl-chrome); font-size: 11px; color: #9A4A3A; background: #F3E2DC; border: 2px solid #E3C3BA; border-radius: 9px; padding: 11px; cursor: pointer; }
+.bl-main-reset { margin-top: 10px; }
+.bl-data-reset:active, .bl-main-reset:active { transform: translate(1px,1px); }
 
 /* 펫 카드 (마스코트 둥둥) */
 .bl-pet-card { background: var(--bl-card2); border: 2px solid var(--bl-line); border-radius: 12px; padding: 12px; text-align: center; }
