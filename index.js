@@ -1,7 +1,7 @@
-// 🐯 비스트로그 (Beast Log) v0.30.0-beta — 베타 점검: tkLabel 크래시 수정 + 체인 랜덤2~3 + 가격 재조정 + 폰트 축소 + 자동출현/체인 설명 + 일지 요약제목 + resolve·chain에 성격/말투 반영
+// 🐯 비스트로그 (Beast Log) v0.33.0-beta — 독창성 못박기: 인게임 누적이 코어(항상), RP 주입은 선택(기본 OFF). 'RP→인게임→원하면 회상' 철학. 회상 시 감회 묻어나되 비강제
 // 버전 3곳 동시 갱신: (1) 이 주석, (2) BEASTLOG_VERSION, (3) manifest.json
 
-const BEASTLOG_VERSION = '0.30.0';
+const BEASTLOG_VERSION = '0.33.0';
 const MODULE = 'beast_log';
 let LAST_ERROR = '';
 try { console.log('[비스트로그] script loaded v' + BEASTLOG_VERSION); } catch (e) { /* noop */ }
@@ -136,11 +136,11 @@ function relTier(aff) { return relTierObj(aff).label; }
 function affinityDelta(kind) { return ({ help: 2, cooperate: 3, activity: 1, interact: 0, loot: 0, flee: 0, attack: -2 })[kind] || 0; }
 
 // ── 알바 / 돈 / 상점 ──
-const MASCOT_PRICE = { tiger: 0, cat: 0, dog: 0, hamster: 150000, chick: 200000, rabbit: 250000, monkey: 300000 };
+const MASCOT_PRICE = { tiger: 0, cat: 0, dog: 0, monkey: 200000, chick: 220000, hamster: 300000, rabbit: 320000 };
 const JOB_LOAD = ['알바 뛰는 중…', '시급 계산 중…', '사장님 눈치 보는 중…', '진상 응대 중…', '허드렛일 처리 중…'];
 function ownsMascot(k) { return (STATE.owned || []).includes(k); }
 function fmtMoney(n) { return (n || 0).toLocaleString('ko-KR') + '원'; }
-function jobRemaining() { return Math.max(0, (EXT.cooldownTurns || 0) - (getChatLen() - (STATE.lastJobTurn == null ? -99 : STATE.lastJobTurn))); }
+function jobRemaining() { const cd = (STATE.jobCD == null ? 3 : STATE.jobCD); return Math.max(0, cd - (getChatLen() - (STATE.lastJobTurn == null ? -99 : STATE.lastJobTurn))); }
 function canWork() { return jobRemaining() <= 0; }
 function buildJobPrompt() {
     return `너는 RP 주인공({{char}})이 잠깐 뛴 "알바"와 그 결과를 만든다.
@@ -185,6 +185,7 @@ function applyJob(job) {
     STATE.jobs.unshift(job);
     if (STATE.jobs.length > 30) STATE.jobs.length = 30;
     STATE.lastJobTurn = getChatLen();
+    STATE.jobCD = 2 + Math.floor(Math.random() * 4);   // 다음 알바까지 2~5회 랜덤
     STATE.hunger = clamp03((STATE.hunger == null ? 3 : STATE.hunger) - 1);
     saveState(STATE); renderAll();
     showJobResult(job);
@@ -192,6 +193,15 @@ function applyJob(job) {
 function deleteJob(id) { STATE.jobs = (STATE.jobs || []).filter(j => j.id !== id); saveState(STATE); renderFull(); }
 function clearJobs() { showConfirm('알바 내역 비우기', '알바 기록을 전부 지울까요? (돈은 그대로)', () => { STATE.jobs = []; STATE.lastJob = null; saveState(STATE); renderAll(); }); }
 function resetMoney() { showConfirm('돈 리셋', `보유 금액 ${fmtMoney(STATE.money)}을(를) 0원으로 되돌릴까요?`, () => { STATE.money = 0; saveState(STATE); renderAll(); flash('💰 0원으로 리셋'); }); }
+const DONATE_TO = ['길고양이 급식소', '동네 비둘기 연합', '사장님 외제차 기름값', '익명의 너구리', '폐지 줍는 어르신', '유기견 보호소', '바다거북 구조대', '수상한 종교 단체', '나무 심기 운동', '정체불명의 모금함', '옆자리 다람쥐', '세계 평화 기금'];
+function onDonate() {
+    if ((STATE.money || 0) <= 0) { flash('후원할 돈이 없다… 빈손이다'); return; }
+    const amt = STATE.money, to = pick(DONATE_TO);
+    showConfirm('전 재산 후원', `보유한 ${fmtMoney(amt)}을(를) 전부 후원할까요?\n(돌려받지 못합니다)`, () => {
+        STATE.money = 0; saveState(STATE); renderAll();
+        flash(`💝 '${to}'에 ${fmtMoney(amt)} 후원됐습니다`);
+    });
+}
 function buyMascot(k) {
     if (!MASCOTS[k]) return;
     if (ownsMascot(k)) { EXT.mascot = k; saveExt(); renderAll(); flash('이미 보유 — 선택됨'); return; }
@@ -240,7 +250,7 @@ const AFTER_POOL = ['며칠 뒤, 그 사람은 당신을 꽤 괜찮은 사람으
 function rollAfter() { return Math.random() < 0.18 ? pick(AFTER_POOL) : null; }
 
 // ── 전역 설정 ──
-function defaultExt() { return { connectionProfile: '', autoDetect: false, cooldownTurns: 3, mascot: 'tiger', contextDepth: 'balance', consolePos: null, chainOn: true, spriteMono: false }; }
+function defaultExt() { return { connectionProfile: '', autoDetect: false, cooldownTurns: 3, mascot: 'tiger', contextDepth: 'balance', consolePos: null, chainOn: true, spriteMono: false, theme: 'pudding' }; }
 let EXT = defaultExt();
 function loadExt() {
     const ctx = getCtx();
@@ -260,7 +270,7 @@ function defaultState() {
         currentNpc: null, currentSituation: null,
         money: 0, owned: ['tiger', 'cat', 'dog'], lastJobTurn: -99, lastJob: null, jobs: [], jobs: [],
         pins: [],
-        lastInjectTurn: -99, settings: { injectDefault: true },
+        lastInjectTurn: -99, settings: { injectDefault: false },
     };
 }
 function loadState() {
@@ -384,6 +394,15 @@ function getConvo() {
     const out = slice.map(m => `${m.is_user ? '유저' : (m.name || '상대')}: ${stripTags(m.mes)}`).join('\n');
     return (out || '(대화 없음)').slice(-6000);
 }
+function recentFoesHint() {
+    const seen = [];
+    for (const e of (STATE.encounters || [])) {
+        if (e.foe && !seen.includes(e.foe)) seen.push(e.foe);
+        if (seen.length >= 6) break;
+    }
+    if (!seen.length) return '';
+    return `\n[최근 등장한 대상] ${seen.join(', ')}\n이것들과 같은 동물/종류를 반복하지 마라. 매번 다른 종류·다른 분위기의 새로운 대상으로 다양하게 내라(직전과 같은 동물 금지).`;
+}
 function knownNpcsHint() {
     const arr = Object.values(STATE.npcs);
     if (!arr.length) return '';
@@ -460,7 +479,7 @@ ${RULES_FIT}
 foeType은 대상이 사람이면 "person", 동물/생물이면 "creature", 물건/사물이면 "object".
 place=이 조우가 일어나는 장소를 짧게(예: 중앙공원 / 강의실 / 선술집 / 골목). env=그 장소 환경 태그 2~4개(예: ["야외","공원","나무"] 또는 ["실내","학교"]). 이건 나중에 "비슷한 장소에서만 다시 떠오르게" 쓰는 값이니 정확히.
 형식: {"category":"npc","emoji":"이모지 하나","title":"~가 나타났다/다가온다/보인다 류 한 문장","foe":"대상 이름(없으면 null)","foeType":"person|creature|object","place":"장소","env":["태그",...],"choices":[{"label":"...","kind":"..."},{"label":"...","kind":"..."},{"label":"...","kind":"flee"}]}
-${knownNpcsHint()}
+${knownNpcsHint()}${recentFoesHint()}
 ${getScene()}[대화 맥락]
 ${getConvo()}`;
 }
@@ -488,8 +507,9 @@ function buildResolvePrompt(item, choiceLabel, kind, history) {
 ${relCtx}${hist}규칙: 데드팬 코미디, 한국어. exp=경험치 정수. rep=평판 변화 정수(좋은 행동 +, 괜히 시비/민폐 -). affDelta=관계 변화 정수(없으면 0).
 inner.foe=상대/주변의 진짜 속내(수치와 어긋나도 됨, 그게 재미). inner.user=유저 속내 추측("~했을지도/~었을 것이다" 식 단정 금지).
 after=가끔만(대개 null) 며칠 뒤 오해/뒷이야기 한 줄. drop=주운 물건 있으면 {name,emoji,price:0}, 없으면 null.
-대상(인물/생물)이 있으면: npcMemory=그 대상에 대해 오래 남을 한 줄 기억(없으면 null), npcState=그 대상의 현재 상태 짧게(없으면 null). JSON만.
-형식: {"result":"짧은 결과 라벨","exp":정수,"rep":정수,"affDelta":정수,"drop":{...}또는null,"inner":{"foe":"...","user":"..."},"after":"..."또는null,"npcMemory":"..."또는null,"npcState":"..."또는null}
+대상(인물/생물)이 있으면: npcMemory=그 대상에 대해 오래 남을 한 줄 기억(없으면 null), npcState=그 대상의 현재 상태 짧게(없으면 null).
+summary=이 조우 전체를 짧게 요약한 한 줄(대상+무슨 일이 있었는지, 일지 제목용. 예: "이구아나를 쓰다듬으려다 경계당함", "붕어빵 아저씨에게 세금 얘기하다 미움삼"). 18자 안팎으로 짧게. JSON만.
+형식: {"result":"짧은 결과 라벨","summary":"한 줄 요약","exp":정수,"rep":정수,"affDelta":정수,"drop":{...}또는null,"inner":{"foe":"...","user":"..."},"after":"..."또는null,"npcMemory":"..."또는null,"npcState":"..."또는null}
 
 ${getScene()}[대화 맥락]
 ${getConvo()}`;
@@ -535,6 +555,7 @@ function normalizeOutcome(o, kind) {
     o = o || {};
     return {
         result: String(o.result || '결과'),
+        summary: (o.summary && o.summary !== 'null') ? String(o.summary).slice(0, 40) : null,
         exp: Number.isFinite(o.exp) ? o.exp : 1,
         rep: Number.isFinite(o.rep) ? o.rep : 0,
         affDelta: Number.isFinite(o.affDelta) ? o.affDelta : affinityDelta(kind),
@@ -562,7 +583,7 @@ function applyOutcome(item, choiceLabel, outcome, kind) {
     const affDelta = item.foe ? (Number.isFinite(outcome.affDelta) ? outcome.affDelta : affinityDelta(kind)) : 0;
     const entry = {
         id: cryptoId(), no: STATE.encounters.length + 1, time: nowHHMM(), category: item.category || 'npc',
-        emoji: item.emoji, title: item.title, desc: `${choiceLabel} — ${outcome.result}`,
+        emoji: item.emoji, title: item.title, desc: `${choiceLabel} — ${outcome.result}`, summary: outcome.summary || null,
         result: outcome.result, exp: outcome.exp, rep: outcome.rep || 0, rarity, affDelta, foe: item.foe || null,
         drop: outcome.drop ? outcome.drop.name : null, dropBait: itemType === 'bait',
         inner: outcome.inner, after: (outcome.after || rollAfter()), _noNews: pick(NO_NEWS), revealed: false, open: false,
@@ -643,10 +664,10 @@ function daysSince(ts) { return ts ? Math.floor((Date.now() - ts) / 86400000) : 
 function isPinned(key) { return (STATE.pins || []).includes(key); }
 function pinBtn(key) {
     const off = STATE.settings.injectDefault ? '' : ' disabled';
-    return `<button class="bl-pin${isPinned(key) ? ' on' : ''}" data-pin="${escapeHtml(key)}"${off} title="${STATE.settings.injectDefault ? '기억에 주입/해제' : '세팅에서 흔적 남기기를 켜야 함'}">📌</button>`;
+    return `<button class="bl-pin${isPinned(key) ? ' on' : ''}" data-pin="${escapeHtml(key)}"${off} title="${STATE.settings.injectDefault ? '기억에 주입/해제' : '기억 흘리기를 켜야 활성화'}">📌</button>`;
 }
 function pinMemory(key) {
-    if (!STATE.settings.injectDefault) { flash('세팅에서 🌱 흔적 남기기를 켜주세요'); return; }
+    if (!STATE.settings.injectDefault) { flash('세팅에서 🌱 기억 흘리기를 먼저 켜주세요'); return; }
     STATE.pins = STATE.pins || [];
     const i = STATE.pins.indexOf(key);
     if (i >= 0) STATE.pins.splice(i, 1); else STATE.pins.push(key);
@@ -694,7 +715,8 @@ function buildMemoryBlock() {
     let s = '';
     if (auto.length) {
         s += `[비스트로그 — 지금 이 장소에서 떠오를 수 있는 것들]
-※ 현재 장면의 환경과 맞아떨어지는, 이미 아는 대상들이다. 자연스러울 때 {{char}}가 먼저 알아보거나 떠올려도 좋다 ("저 다람쥐, 전에 본 놈 아니냐") — 관계 단계에 맞는 반응으로. 강제 등장/장면 가로채기 금지.
+※ 현재 장면의 환경과 맞아떨어지는, 이미 아는 대상들이다. 자연스러울 때 {{char}}가 먼저 알아보거나 떠올려도 좋다 ("저 다람쥐, 전에 본 놈 아니냐") — 관계 단계에 맞는 반응으로. 오랜만의 재회라면 그 감회(반가움/떨떠름함/경계 등)가 슬쩍 묻어나도 좋다.
+※ 이건 장면을 끌고 가라는 지시가 아니다. 흐름을 해치지 않는 선에서 양념처럼 슬쩍 언급될 뿐. 강제 등장·장면 가로채기 절대 금지.
 ${auto.join('\n')}`;
     }
     if (pins.length) {
@@ -722,6 +744,15 @@ function setInjectDefault(v) { STATE.settings.injectDefault = v; saveState(STATE
 function setAutoDetect(v) { EXT.autoDetect = v; saveExt(); syncControls(); }
 function setChain(v) { EXT.chainOn = v; saveExt(); syncControls(); }
 function setSpriteMono(v) { EXT.spriteMono = v; saveExt(); renderAll(); syncControls(); }
+const BL_THEMES = [{ k: 'pudding', label: '🍮 푸딩' }, { k: 'mint', label: '🌿 민트' }, { k: 'strawberry', label: '🍓 딸기우유' }, { k: 'dawn', label: '🌌 새벽하늘' }];
+function applyTheme() {
+    const t = (EXT && EXT.theme) || 'pudding';
+    const root = document.documentElement;
+    if (!root) return;
+    if (t === 'pudding') root.removeAttribute('data-bl-theme');
+    else root.setAttribute('data-bl-theme', t);
+}
+function setTheme(v) { EXT.theme = v; saveExt(); applyTheme(); renderAll(); syncControls(); }
 function syncControls() {
     if (consoleEl) { const sw = consoleEl.querySelector('.bl-sw'); if (sw) sw.dataset.on = STATE.settings.injectDefault ? 'true' : 'false'; }
     if (fullEl) {
@@ -729,6 +760,8 @@ function syncControls() {
         const fa = fullEl.querySelector('.bl-t-auto'); if (fa) fa.checked = EXT.autoDetect;
         const fc = fullEl.querySelector('.bl-t-chain'); if (fc) fc.checked = EXT.chainOn !== false;
         const fm = fullEl.querySelector('.bl-t-mono'); if (fm) fm.checked = EXT.spriteMono === true;
+        const curTheme = EXT.theme || 'pudding';
+        fullEl.querySelectorAll('.bl-theme-btn').forEach(b => b.classList.toggle('on', b.dataset.theme === curTheme));
     }
 }
 function pickMascot(key) { if (MASCOTS[key] && ownsMascot(key)) { EXT.mascot = key; saveExt(); renderAll(); } }
@@ -769,7 +802,7 @@ function buildConsole() {
       <div class="bl-topbar">
         <span class="bl-grip">⠿</span><span class="bl-title">비스트로그</span>
         <span class="bl-spacer"></span>
-        <span class="bl-inject"><span class="bl-lab">🌱</span><span class="bl-sw" data-on="true"></span></span>
+        <span class="bl-inject"><span class="bl-lab">🌱</span><span class="bl-sw" data-on="false"></span></span>
         <span class="bl-min" title="아이콘만">▁</span>
         <span class="bl-up" title="기록·설정 열기">📖</span>
       </div>
@@ -938,7 +971,7 @@ function buildFull() {
           </div>
           <div class="bl-tab-panel" data-panel="work" hidden>
             <div class="bl-work">
-              <div class="bl-money-bar">보유 <b class="num bl-work-money">0원</b><button class="bl-money-reset" title="돈 0원으로">💰 리셋</button></div>
+              <div class="bl-money-bar">보유 <b class="num bl-work-money">0원</b><button class="bl-donate" title="전 재산 후원">💝 후원</button></div>
               <button class="bl-work-go">🛠️ 알바 뛰기</button>
               <div class="bl-work-cd"></div>
               <div class="bl-acc bl-work-acc collapsed">
@@ -956,11 +989,18 @@ function buildFull() {
             </div>
           </div>
           <div class="bl-tab-panel" data-panel="set" hidden>
+            <div class="bl-philo">기본은 <b>인게임에만</b> 쌓여요. RP는 안 건드림. 아래를 켜면 쌓인 기억을 캐릭터가 가끔 회상하게 됩니다 (선택).</div>
             <div class="bl-full-toggles">
-              <label><span>🌱 세계에 흔적 남기기 <small>(캐릭터가 기억으로 떠올림)</small></span><input type="checkbox" class="bl-t-inject"></label>
+              <label><span>🌱 기억을 RP에 흘리기 <small>(선택) — 켜면 쌓인 NPC·일지를 캐릭터가 대화 중 가끔 자연스럽게 떠올려요. 강제 등장 X, 그냥 슬쩍</small></span><input type="checkbox" class="bl-t-inject"></label>
               <label><span>🔗 조우 체인 <small>(켜면 조우가 랜덤 2~3단계로 이어짐 / 끄면 1번에 끝)</small></span><input type="checkbox" class="bl-t-chain"></label>
               <label><span>🎨 마스코트 흑백(도트라인)</span><input type="checkbox" class="bl-t-mono"></label>
               <label><span>📥 자동 출현 <small>(켜면 RP 상대 답장마다 "텀" 간격을 지켜 조우가 저절로 뜸 / 끄면 출현 버튼으로 직접)</small></span><input type="checkbox" class="bl-t-auto"></label>
+            </div>
+            <div class="bl-theme-row">
+              <span class="bl-theme-lbl">🎨 테마</span>
+              <div class="bl-theme-btns">
+                ${BL_THEMES.map(t => `<button class="bl-theme-btn" data-theme="${t.k}">${t.label}</button>`).join('')}
+              </div>
             </div>
             <div class="bl-cd-row"><span>텀 (알바·자동 간격)</span><input type="number" class="bl-cd-input" min="0" max="20"><span>턴</span></div>
             <div class="bl-data-sec">
@@ -996,11 +1036,12 @@ function buildFull() {
     fullEl.querySelector('.bl-bag-clear').addEventListener('click', e => { e.stopPropagation(); clearItems(); });
     fullEl.querySelector('.bl-pet-pick').addEventListener('click', e => { const b = e.target.closest('.bl-pick-btn'); if (b) pickMascot(b.dataset.m); });
     fullEl.querySelector('.bl-work-go').addEventListener('click', onWork);
-    fullEl.querySelector('.bl-money-reset').addEventListener('click', resetMoney);
+    fullEl.querySelector('.bl-donate').addEventListener('click', onDonate);
     fullEl.querySelector('.bl-jobs-clear').addEventListener('click', e => { e.stopPropagation(); clearJobs(); });
     fullEl.querySelector('.bl-jobs-list').addEventListener('click', e => { const b = e.target.closest('.bl-job-del'); if (b) deleteJob(b.dataset.id); });
     fullEl.querySelector('.bl-main-reset').addEventListener('click', resetAll);
     fullEl.querySelector('.bl-data-export').addEventListener('click', exportData);
+    fullEl.querySelectorAll('.bl-theme-btn').forEach(b => b.addEventListener('click', () => setTheme(b.dataset.theme)));
     fullEl.querySelector('.bl-data-import').addEventListener('click', importData);
     fullEl.querySelector('.bl-data-reset').addEventListener('click', resetAll);
     fullEl.querySelector('.bl-shop-list').addEventListener('click', e => { const b = e.target.closest('.bl-shop-buy'); if (b) buyMascot(b.dataset.m); });
@@ -1084,7 +1125,8 @@ function dexCard(n) {
 }
 const DEX_GROUPS = [{ key: 'creature', label: '🐾 생물' }, { key: 'person', label: '👤 인물' }, { key: 'object', label: '📦 사물' }];
 function tkLabel(e) {
-    if (e && e.foe) return e.foe;                       // NPC면 대상 이름(짧음)
+    if (e && e.summary) return e.summary;               // 전체 내용 요약 한 줄 (우선)
+    if (e && e.foe) return e.foe;                        // 없으면 대상 이름
     const t = stripTags((e && e.title) || '');
     return t.length > 20 ? t.slice(0, 19) + '…' : (t || '조우');
 }
@@ -1122,6 +1164,7 @@ function renderFull() {
     fullEl.querySelector('.bl-t-mono').checked = EXT.spriteMono === true;
     fullEl.querySelector('.bl-t-auto').checked = EXT.autoDetect;
     fullEl.querySelector('.bl-cd-input').value = EXT.cooldownTurns;
+    { const ct = EXT.theme || 'pudding'; fullEl.querySelectorAll('.bl-theme-btn').forEach(b => b.classList.toggle('on', b.dataset.theme === ct)); }
 
     fullEl.querySelector('.bl-enc-cnt').textContent = STATE.encounters.length + '건';
     fullEl.querySelector('.bl-enc-list').innerHTML = STATE.encounters.length
@@ -1488,6 +1531,7 @@ function registerEvents() {
 function init() {
     try {
         EXT = loadExt(); STATE = loadState();
+        applyTheme();
         buildConsole(); renderConsole(); applyConsolePos();
         buildSettingsWithRetry(10); buildWandMenuWithRetry(10);
         registerEvents();
