@@ -1,7 +1,7 @@
-// 🐯 비스트로그 (Beast Log) v0.29.0 — 팝업 안닫힘 픽스(전체제거+배경탭닫기+중복실행방지) + 저장소위생(인카운터 캡, 챗전환시 기억 리프레시로 누수방지)
+// 🐯 비스트로그 (Beast Log) v0.30.0-beta — 베타 점검: tkLabel 크래시 수정 + 체인 랜덤2~3 + 가격 재조정 + 폰트 축소 + 자동출현/체인 설명 + 일지 요약제목 + resolve·chain에 성격/말투 반영
 // 버전 3곳 동시 갱신: (1) 이 주석, (2) BEASTLOG_VERSION, (3) manifest.json
 
-const BEASTLOG_VERSION = '0.29.0';
+const BEASTLOG_VERSION = '0.30.0';
 const MODULE = 'beast_log';
 let LAST_ERROR = '';
 try { console.log('[비스트로그] script loaded v' + BEASTLOG_VERSION); } catch (e) { /* noop */ }
@@ -136,7 +136,7 @@ function relTier(aff) { return relTierObj(aff).label; }
 function affinityDelta(kind) { return ({ help: 2, cooperate: 3, activity: 1, interact: 0, loot: 0, flee: 0, attack: -2 })[kind] || 0; }
 
 // ── 알바 / 돈 / 상점 ──
-const MASCOT_PRICE = { tiger: 0, cat: 0, dog: 0, hamster: 380000, chick: 520000, rabbit: 660000, monkey: 840000 };
+const MASCOT_PRICE = { tiger: 0, cat: 0, dog: 0, hamster: 150000, chick: 200000, rabbit: 250000, monkey: 300000 };
 const JOB_LOAD = ['알바 뛰는 중…', '시급 계산 중…', '사장님 눈치 보는 중…', '진상 응대 중…', '허드렛일 처리 중…'];
 function ownsMascot(k) { return (STATE.owned || []).includes(k); }
 function fmtMoney(n) { return (n || 0).toLocaleString('ko-KR') + '원'; }
@@ -179,12 +179,19 @@ async function onWork() {
 }
 function applyJob(job) {
     STATE.money = (STATE.money || 0) + job.pay;
+    job.id = cryptoId(); job.time = nowHHMM();
     STATE.lastJob = job;
+    STATE.jobs = STATE.jobs || [];
+    STATE.jobs.unshift(job);
+    if (STATE.jobs.length > 30) STATE.jobs.length = 30;
     STATE.lastJobTurn = getChatLen();
     STATE.hunger = clamp03((STATE.hunger == null ? 3 : STATE.hunger) - 1);
     saveState(STATE); renderAll();
     showJobResult(job);
 }
+function deleteJob(id) { STATE.jobs = (STATE.jobs || []).filter(j => j.id !== id); saveState(STATE); renderFull(); }
+function clearJobs() { showConfirm('알바 내역 비우기', '알바 기록을 전부 지울까요? (돈은 그대로)', () => { STATE.jobs = []; STATE.lastJob = null; saveState(STATE); renderAll(); }); }
+function resetMoney() { showConfirm('돈 리셋', `보유 금액 ${fmtMoney(STATE.money)}을(를) 0원으로 되돌릴까요?`, () => { STATE.money = 0; saveState(STATE); renderAll(); flash('💰 0원으로 리셋'); }); }
 function buyMascot(k) {
     if (!MASCOTS[k]) return;
     if (ownsMascot(k)) { EXT.mascot = k; saveExt(); renderAll(); flash('이미 보유 — 선택됨'); return; }
@@ -251,7 +258,7 @@ function defaultState() {
         mood: 3, hunger: 3, hp: 3,
         items: [], encounters: [], npcs: {},
         currentNpc: null, currentSituation: null,
-        money: 0, owned: ['tiger', 'cat', 'dog'], lastJobTurn: -99, lastJob: null,
+        money: 0, owned: ['tiger', 'cat', 'dog'], lastJobTurn: -99, lastJob: null, jobs: [], jobs: [],
         pins: [],
         lastInjectTurn: -99, settings: { injectDefault: true },
     };
@@ -423,19 +430,27 @@ async function llmGenerate(prompt, maxTokens) {
 }
 function getScene() {
     const ctx = getCtx(); if (!ctx) return '';
+    const sub = s => stripTags(String(s || '')).replace(/\{\{user\}\}/gi, ctx.name1 || '유저').replace(/\{\{char\}\}/gi, ctx.name2 || '상대');
     const bits = [];
     try {
         if (ctx.name2) bits.push(`상대 캐릭터: ${ctx.name2}`);
         const char = ctx.characters && ctx.characters[ctx.characterId];
         if (char) {
-            const scen = String((char.scenario) || (char.data && char.data.scenario) || '').trim();
-            const desc = String(char.description || (char.data && char.data.description) || '').trim();
+            const d = char.data || {};
+            const scen = sub(char.scenario || d.scenario).trim();
+            const desc = sub(char.description || d.description).trim();
+            const pers = sub(char.personality || d.personality).trim();
             const src = scen || desc;
-            if (src) bits.push(`설정: ${stripTags(src).replace(/\{\{user\}\}/gi, ctx.name1 || '유저').replace(/\{\{char\}\}/gi, ctx.name2 || '상대').slice(0, 320)}`);
+            if (src) bits.push(`설정: ${src.slice(0, 300)}`);
+            if (pers) bits.push(`${ctx.name2 || '상대'} 성격: ${pers.slice(0, 160)}`);
         }
         if (ctx.name1) bits.push(`유저(나): ${ctx.name1}`);
+        // 유저 페르소나 설명(있으면 말투/성격 단서로)
+        const persona = sub((ctx.power_user && ctx.power_user.persona_description) || ctx.personaDescription || '').trim();
+        if (persona) bits.push(`유저 페르소나: ${persona.slice(0, 160)}`);
     } catch (e) {}
-    return bits.length ? `[장면/세계 정보]\n${bits.join('\n')}\n` : '';
+    bits.push('말투/문체: 위 캐릭터와 유저의 성격, 그리고 최근 대화의 어조·말투·분위기를 그대로 반영해라(진지하면 진지하게, 가벼우면 가볍게). 비스트로그 특유의 데드팬은 유지하되 장면의 톤을 거스르지 마라.');
+    return `[장면/세계 정보]\n${bits.join('\n')}\n`;
 }
 const RULES_FIT = '반드시 현재 장면(장소/시대/세계관/등장인물/분위기/소품)에 어울려야 한다. 장면의 구체적 단서(나온 장소·물건·인물·사건)를 적극 활용해 거기서 끌어내라. 맥락이 빈약하더라도 아무 동물이나(특히 다람쥐·비둘기) 기계적으로 반복하지 마라 — 장면이 판타지면 판타지답게, 현대면 현대답게, SF면 SF답게. 맥락에 없는 뜬금없는 대상(예: 한국 회사원, 김대리)을 만들지 마라. 무겁지 않은 일상 + 데드팬 코미디. 한국어로만. JSON만, 설명/코드펜스 금지.';
 function buildAppearPrompt() {
@@ -476,7 +491,7 @@ after=가끔만(대개 null) 며칠 뒤 오해/뒷이야기 한 줄. drop=주운
 대상(인물/생물)이 있으면: npcMemory=그 대상에 대해 오래 남을 한 줄 기억(없으면 null), npcState=그 대상의 현재 상태 짧게(없으면 null). JSON만.
 형식: {"result":"짧은 결과 라벨","exp":정수,"rep":정수,"affDelta":정수,"drop":{...}또는null,"inner":{"foe":"...","user":"..."},"after":"..."또는null,"npcMemory":"..."또는null,"npcState":"..."또는null}
 
-[대화 맥락]
+${getScene()}[대화 맥락]
 ${getConvo()}`;
 }
 function buildChainPrompt(item, history, choice, stage, max) {
@@ -489,7 +504,7 @@ ${hist}
 규칙: 데드팬 코미디, 한국어. 직전 선택의 자연스러운 반응으로 상황이 한 단계 더 꼬이거나 풀린다. 새 선택지 3개(서로 다른 대응, 마지막은 빠지기 kind:flee). ${RULES_FIT}
 형식: {"beat":"전개 한두 문장","choices":[{"label":"...","kind":"..."},{"label":"...","kind":"..."},{"label":"...","kind":"flee"}]}
 
-[대화 맥락]
+${getScene()}[대화 맥락]
 ${getConvo()}`;
 }
 function normalizeBeat(o) {
@@ -923,12 +938,12 @@ function buildFull() {
           </div>
           <div class="bl-tab-panel" data-panel="work" hidden>
             <div class="bl-work">
-              <div class="bl-money-bar">보유 <b class="num bl-work-money">0원</b></div>
+              <div class="bl-money-bar">보유 <b class="num bl-work-money">0원</b><button class="bl-money-reset" title="돈 0원으로">💰 리셋</button></div>
               <button class="bl-work-go">🛠️ 알바 뛰기</button>
               <div class="bl-work-cd"></div>
-              <div class="bl-acc bl-work-acc" hidden>
-                <div class="bl-acc-head"><h3>🛠️ 최근 알바</h3><span class="bl-rule"></span><span class="bl-chev">▾</span></div>
-                <div class="bl-acc-body"><div class="bl-work-last"></div></div>
+              <div class="bl-acc bl-work-acc collapsed">
+                <div class="bl-acc-head"><h3>🛠️ 알바 내역</h3><span class="bl-rule"></span><span class="bl-job-cnt num"></span><button class="bl-clear-btn bl-jobs-clear" title="전체 비우기">🧹</button><span class="bl-chev">▾</span></div>
+                <div class="bl-acc-body"><div class="bl-jobs-list"></div></div>
               </div>
               <div class="bl-work-tip">RP 주인공이 세계관에 맞는 알바를 뜀. 보수는 짜다. 가끔 사건 터짐. (알바하면 살짝 배고파짐)</div>
             </div>
@@ -943,9 +958,9 @@ function buildFull() {
           <div class="bl-tab-panel" data-panel="set" hidden>
             <div class="bl-full-toggles">
               <label><span>🌱 세계에 흔적 남기기 <small>(캐릭터가 기억으로 떠올림)</small></span><input type="checkbox" class="bl-t-inject"></label>
-              <label><span>🔗 조우 체인 (3단계 전개)</span><input type="checkbox" class="bl-t-chain"></label>
+              <label><span>🔗 조우 체인 <small>(켜면 조우가 랜덤 2~3단계로 이어짐 / 끄면 1번에 끝)</small></span><input type="checkbox" class="bl-t-chain"></label>
               <label><span>🎨 마스코트 흑백(도트라인)</span><input type="checkbox" class="bl-t-mono"></label>
-              <label><span>📥 자동 감지 (입구)</span><input type="checkbox" class="bl-t-auto"></label>
+              <label><span>📥 자동 출현 <small>(켜면 RP 상대 답장마다 "텀" 간격을 지켜 조우가 저절로 뜸 / 끄면 출현 버튼으로 직접)</small></span><input type="checkbox" class="bl-t-auto"></label>
             </div>
             <div class="bl-cd-row"><span>텀 (알바·자동 간격)</span><input type="number" class="bl-cd-input" min="0" max="20"><span>턴</span></div>
             <div class="bl-data-sec">
@@ -981,6 +996,9 @@ function buildFull() {
     fullEl.querySelector('.bl-bag-clear').addEventListener('click', e => { e.stopPropagation(); clearItems(); });
     fullEl.querySelector('.bl-pet-pick').addEventListener('click', e => { const b = e.target.closest('.bl-pick-btn'); if (b) pickMascot(b.dataset.m); });
     fullEl.querySelector('.bl-work-go').addEventListener('click', onWork);
+    fullEl.querySelector('.bl-money-reset').addEventListener('click', resetMoney);
+    fullEl.querySelector('.bl-jobs-clear').addEventListener('click', e => { e.stopPropagation(); clearJobs(); });
+    fullEl.querySelector('.bl-jobs-list').addEventListener('click', e => { const b = e.target.closest('.bl-job-del'); if (b) deleteJob(b.dataset.id); });
     fullEl.querySelector('.bl-main-reset').addEventListener('click', resetAll);
     fullEl.querySelector('.bl-data-export').addEventListener('click', exportData);
     fullEl.querySelector('.bl-data-import').addEventListener('click', importData);
@@ -1065,6 +1083,11 @@ function dexCard(n) {
       </div>`;
 }
 const DEX_GROUPS = [{ key: 'creature', label: '🐾 생물' }, { key: 'person', label: '👤 인물' }, { key: 'object', label: '📦 사물' }];
+function tkLabel(e) {
+    if (e && e.foe) return e.foe;                       // NPC면 대상 이름(짧음)
+    const t = stripTags((e && e.title) || '');
+    return t.length > 20 ? t.slice(0, 19) + '…' : (t || '조우');
+}
 function renderFull() {
     if (!fullEl) return;
     const evo = evoStage(STATE.level), need = STATE.level * 100;
@@ -1083,10 +1106,11 @@ function renderFull() {
     // 알바 탭
     const wm = fullEl.querySelector('.bl-work-money'); if (wm) wm.textContent = fmtMoney(STATE.money);
     const wcd = fullEl.querySelector('.bl-work-cd'); if (wcd) { const r = jobRemaining(); wcd.textContent = r > 0 ? `😮‍💨 ${r}턴 더 쉬어야` : '✅ 알바 가능'; }
-    const wl = fullEl.querySelector('.bl-work-last');
-    const wacc = fullEl.querySelector('.bl-work-acc');
-    if (wacc) wacc.hidden = !STATE.lastJob;
-    if (wl) wl.innerHTML = STATE.lastJob ? `<div class="bl-work-lastttl">${escapeHtml(STATE.lastJob.job)}</div><div class="bl-work-lastrep">${escapeHtml(STATE.lastJob.report)}${STATE.lastJob.incident ? ' ⚠️ ' + escapeHtml(STATE.lastJob.incident) : ''} <b>(+${fmtMoney(STATE.lastJob.pay)})</b></div>` : '';
+    const jc = fullEl.querySelector('.bl-job-cnt'); if (jc) jc.textContent = (STATE.jobs || []).length + '건';
+    const jl = fullEl.querySelector('.bl-jobs-list');
+    if (jl) jl.innerHTML = (STATE.jobs && STATE.jobs.length)
+        ? STATE.jobs.map(j => `<div class="bl-job-row" data-id="${j.id}"><div class="bl-job-rmain"><span class="bl-job-rttl">${escapeHtml(j.job)}</span><span class="bl-job-rpay num">+${fmtMoney(j.pay)}</span></div><div class="bl-job-rrep">${escapeHtml(j.report)}${j.incident ? ' ⚠️ ' + escapeHtml(j.incident) : ''}</div><button class="bl-job-del" data-id="${j.id}" title="삭제">🗑️</button></div>`).join('')
+        : '<div class="bl-empty">아직 알바 안 함</div>';
     // 상점 탭
     const sm = fullEl.querySelector('.bl-shop-money'); if (sm) sm.textContent = fmtMoney(STATE.money);
     const sl = fullEl.querySelector('.bl-shop-list'); if (sl) sl.innerHTML = shopListHtml();
@@ -1103,10 +1127,11 @@ function renderFull() {
     fullEl.querySelector('.bl-enc-list').innerHTML = STATE.encounters.length
         ? STATE.encounters.map(e => `
             <div class="bl-ticket bl-tk-${e.category || 'npc'}${e.open ? '' : ' collapsed'}" data-id="${e.id}">
-              <div class="bl-tk-head"><span class="bl-tk-time num">${e.time || ''}</span><span class="bl-tk-emoji">${e.emoji}</span><span class="bl-tk-title">${escapeHtml(e.title)}</span>${e.rarity && e.rarity !== 'common' ? `<span class="bl-tk-rar">${RARITY[e.rarity].dot}</span>` : ''}<button class="bl-tk-del" data-id="${e.id}" title="삭제">🗑️</button><span class="bl-tk-chev">▾</span></div>
+              <div class="bl-tk-head"><span class="bl-tk-time num">${e.time || ''}</span><span class="bl-tk-emoji">${e.emoji}</span><span class="bl-tk-title">${escapeHtml(tkLabel(e))}</span>${e.rarity && e.rarity !== 'common' ? `<span class="bl-tk-rar">${RARITY[e.rarity].dot}</span>` : ''}<span class="bl-tk-chev">▾</span></div>
               <div class="bl-tk-body">
+                <div class="bl-tk-fulltitle">${escapeHtml(e.title)}</div>
                 <div class="bl-tk-desc">${escapeHtml(e.desc)}</div>
-                <div class="bl-tk-foot">${chipsHtml(e)}${pinBtn('enc:' + e.id)}</div>
+                <div class="bl-tk-foot">${chipsHtml(e)}${pinBtn('enc:' + e.id)}<button class="bl-tk-del" data-id="${e.id}" title="삭제">🗑️</button></div>
                 ${e.inner ? (e.revealed ? afterBlock(e) : `<button class="bl-reveal" data-id="${e.id}">🗞️ 뒷소문 보기</button>`) : ''}
               </div>
             </div>`).join('')
@@ -1243,7 +1268,7 @@ async function onSituation() {
 }
 function startEncounter(item) {
     // 조우(npc)는 체인 ON이면 3박자, 아니면 1박자. 상황은 onSituation에서 1박자.
-    const max = (item.category === 'npc' && EXT.chainOn !== false) ? 3 : 1;
+    const max = (item.category === 'npc' && EXT.chainOn !== false) ? (2 + Math.floor(Math.random() * 2)) : 1;
     showChoicePopup(item, { stage: 1, max, history: [], origItem: item });
 }
 function showChoicePopup(item, chain) {
@@ -1450,6 +1475,14 @@ function registerEvents() {
     if (!ctx || !ctx.eventSource) return;
     const types = ctx.eventTypes || ctx.event_types || {};
     if (types.CHAT_CHANGED) ctx.eventSource.on(types.CHAT_CHANGED, () => { STATE = loadState(); ensureMounted(); renderAll(); refreshMemory(); });
+    // 자동 출현: 상대 메시지가 올 때마다, 텀(쿨다운) 간격을 지키며 자동으로 조우 1건 생성
+    const onMsg = () => {
+        if (!EXT.autoDetect || _blBusy) return;
+        if (!canInject()) return;
+        markInject();
+        setTimeout(() => { if (EXT.autoDetect && !_blBusy) onAppear(); }, 700);
+    };
+    if (types.MESSAGE_RECEIVED) ctx.eventSource.on(types.MESSAGE_RECEIVED, onMsg);
 }
 
 function init() {
