@@ -1,7 +1,7 @@
-// 🐯 비스트로그 (Beast Log) v0.21.0 — 마스코트 도트 스프라이트(SVG) 5종 탑재(호랑이·고양이·강아지·햄스터·병아리) + 흑백/컬러 토글
+// 🐯 비스트로그 (Beast Log) v0.22.0 — 큰창 4탭 구조(메인/알바/상점/세팅) + 설정류 전부 세팅탭으로 이동
 // 버전 3곳 동시 갱신: (1) 이 주석, (2) BEASTLOG_VERSION, (3) manifest.json
 
-const BEASTLOG_VERSION = '0.21.0';
+const BEASTLOG_VERSION = '0.22.0';
 const MODULE = 'beast_log';
 let LAST_ERROR = '';
 try { console.log('[비스트로그] script loaded v' + BEASTLOG_VERSION); } catch (e) { /* noop */ }
@@ -580,7 +580,14 @@ function buildFull() {
           <div class="bl-full-logo">🐯 비스트로그</div>
           <div class="bl-full-actions"><button class="bl-min" title="작게">⊟</button><button class="bl-close" title="닫기">✕</button></div>
         </div>
+        <div class="bl-tabs">
+          <button class="bl-tab on" data-tab="main">🏠 메인</button>
+          <button class="bl-tab" data-tab="work">🛠️ 알바</button>
+          <button class="bl-tab" data-tab="shop">🏪 상점</button>
+          <button class="bl-tab" data-tab="set">⚙️ 세팅</button>
+        </div>
         <div class="bl-full-body">
+          <div class="bl-tab-panel" data-panel="main">
           <div class="bl-pet-card">
             <div class="bl-pet-top"><span class="bl-pet-name"></span><span class="bl-pet-lv">Lv.<b class="num bl-pet-lvnum"></b></span></div>
             <div class="bl-pet"><span class="bl-pet-emoji"></span></div>
@@ -598,13 +605,6 @@ function buildFull() {
             <div class="bl-slot"><span class="bl-slot-h">👤 현재 조우</span><span class="bl-slot-v bl-npc-v"></span></div>
           </div>
           <div class="bl-full-rolls"><button class="bl-roll2">🐯 출현</button><button class="bl-rand2">🌦️ 상황</button></div>
-          <div class="bl-full-toggles">
-            <label><span>📤 결과를 챗에 띄우기</span><input type="checkbox" class="bl-t-inject"></label>
-            <label><span>🔗 조우 체인 (3단계 전개)</span><input type="checkbox" class="bl-t-chain"></label>
-            <label><span>🎨 마스코트 흑백(도트라인)</span><input type="checkbox" class="bl-t-mono"></label>
-            <label><span>📥 자동 감지 (입구)</span><input type="checkbox" class="bl-t-auto"></label>
-          </div>
-          <div class="bl-cd-row"><span>텀 (주입 간격)</span><input type="number" class="bl-cd-input" min="0" max="20"><span>턴</span></div>
           <div class="bl-acc">
             <div class="bl-acc-head"><h3>📜 모험일지</h3><span class="bl-rule"></span><span class="bl-enc-cnt num"></span><button class="bl-clear-btn bl-enc-clear" title="전체 비우기">🧹</button><span class="bl-chev">▾</span></div>
             <div class="bl-acc-body"><div class="bl-enc-list"></div></div>
@@ -617,11 +617,33 @@ function buildFull() {
             <div class="bl-acc-head"><h3>🎒 가방</h3><span class="bl-rule"></span><span class="bl-junk-cnt num"></span><button class="bl-clear-btn bl-bag-clear" title="전체 비우기">🧹</button><span class="bl-chev">▾</span></div>
             <div class="bl-acc-body"><div class="bl-junk-list"></div></div>
           </div>
+          </div>
+          <div class="bl-tab-panel" data-panel="work" hidden>
+            <div class="bl-soon"><div class="bl-soon-emoji">🛠️</div><b>알바</b><p>곧 열려요. RP 캐릭터를 알바 보내서 돈을 법니다.<br>(돈 벌기 빡셀 예정 ㅋㅋ)</p></div>
+          </div>
+          <div class="bl-tab-panel" data-panel="shop" hidden>
+            <div class="bl-soon"><div class="bl-soon-emoji">🏪</div><b>상점</b><p>곧 열려요. 알바로 번 돈으로<br>새 동물을 데려올 수 있게 됩니다.</p></div>
+          </div>
+          <div class="bl-tab-panel" data-panel="set" hidden>
+            <div class="bl-full-toggles">
+              <label><span>📤 결과를 챗에 띄우기</span><input type="checkbox" class="bl-t-inject"></label>
+              <label><span>🔗 조우 체인 (3단계 전개)</span><input type="checkbox" class="bl-t-chain"></label>
+              <label><span>🎨 마스코트 흑백(도트라인)</span><input type="checkbox" class="bl-t-mono"></label>
+              <label><span>📥 자동 감지 (입구)</span><input type="checkbox" class="bl-t-auto"></label>
+            </div>
+            <div class="bl-cd-row"><span>텀 (주입 간격)</span><input type="number" class="bl-cd-input" min="0" max="20"><span>턴</span></div>
+          </div>
         </div>
       </div>`;
     (document.documentElement || document.body).appendChild(fullEl);
     fullEl.querySelector('.bl-min').addEventListener('click', showMini);
     fullEl.querySelector('.bl-close').addEventListener('click', hideHud);
+    fullEl.querySelectorAll('.bl-tab').forEach(t => t.addEventListener('click', () => {
+        const tab = t.dataset.tab;
+        fullEl.querySelectorAll('.bl-tab').forEach(x => x.classList.toggle('on', x === t));
+        fullEl.querySelectorAll('.bl-tab-panel').forEach(p => { p.hidden = (p.dataset.panel !== tab); });
+        fullEl.querySelector('.bl-full-body').scrollTop = 0;
+    }));
     fullEl.querySelector('.bl-t-inject').addEventListener('change', e => setInjectDefault(e.target.checked));
     fullEl.querySelector('.bl-t-chain').addEventListener('change', e => setChain(e.target.checked));
     fullEl.querySelector('.bl-t-mono').addEventListener('change', e => setSpriteMono(e.target.checked));

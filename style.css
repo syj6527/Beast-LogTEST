@@ -124,7 +124,16 @@
 .bl-full-actions { margin-left: auto; display: flex; gap: 6px; }
 .bl-full-actions button { font-family: var(--bl-chrome); border: 2px solid var(--bl-edge); background: var(--bl-card2); border-radius: 7px; width: 28px; height: 26px; cursor: pointer; font-size: 12px; }
 .bl-full-actions button:active { transform: translate(1px,1px); }
-.bl-full-body { padding: 12px; max-height: calc(100dvh - 110px); overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
+.bl-full-body { padding: 12px; max-height: calc(100dvh - 150px); overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
+.bl-tabs { display: flex; gap: 4px; padding: 7px 8px 0; background: var(--bl-point); border-bottom: 3px solid var(--bl-edge); }
+.bl-tab { flex: 1; font-family: var(--bl-chrome); font-size: 10px; padding: 8px 2px; border: 2px solid var(--bl-edge); border-bottom: none; border-radius: 8px 8px 0 0; background: var(--bl-card2); color: #7A5C2C; cursor: pointer; opacity: .7; }
+.bl-tab.on { background: var(--bl-bg); color: var(--bl-ink); opacity: 1; transform: translateY(2px); }
+.bl-tab:active { transform: translate(0,1px); }
+.bl-tab-panel[hidden] { display: none; }
+.bl-soon { text-align: center; padding: 40px 16px; color: var(--bl-ink-soft); }
+.bl-soon-emoji { font-size: 40px; margin-bottom: 10px; }
+.bl-soon b { font-family: var(--bl-chrome); font-size: 13px; color: var(--bl-ink); display: block; margin-bottom: 10px; }
+.bl-soon p { font-size: 12px; line-height: 1.6; }
 
 /* 펫 카드 (마스코트 둥둥) */
 .bl-pet-card { background: var(--bl-card2); border: 2px solid var(--bl-line); border-radius: 12px; padding: 12px; text-align: center; }
