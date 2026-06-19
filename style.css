@@ -189,6 +189,7 @@
 .bl-job-mood { font-size: 11px; color: var(--bl-ink-soft); font-style: italic; text-align: center; }
 .bl-quest-new { display: block; width: 100%; font-family: var(--bl-chrome); font-size: 11.5px; color: var(--bl-btn-ink); background: var(--bl-point); border: 2px solid var(--bl-edge); border-radius: 11px; padding: 13px; cursor: pointer; box-shadow: 2px 3px 0 var(--bl-shadow); margin-bottom: 11px; }
 .bl-quest-new:active { transform: translate(1px,2px); box-shadow: 1px 1px 0 var(--bl-shadow); }
+.bl-quest-cd { text-align: center; font-size: 9.5px; color: var(--bl-ink-soft); margin: -5px 0 11px; }
 .bl-quest-card { background: var(--bl-card); border: 2px solid var(--bl-line); border-radius: 10px; padding: 10px 11px; margin-bottom: 8px; }
 .bl-q-top { display: flex; align-items: flex-start; gap: 7px; margin-bottom: 9px; }
 .bl-q-emoji { font-size: 15px; line-height: 1.2; }

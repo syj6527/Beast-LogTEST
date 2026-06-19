@@ -1,7 +1,7 @@
-// 🐯 비스트로그 (Beast Log) v0.36.0-beta — 퀘스트 성공/실패 둘 다 데드팬 팝업 + 보상명 '누군가의 비밀/정체불명의 선물' + 밥주기 팝업화 + flash 인라인 스타일로(ST CSS가 덮어써서 토스트 안 뜨던 것 수정)
+// 🐯 비스트로그 (Beast Log) v0.37.0-beta — 퀘스트 받기 쿨다운(랜덤 2~4턴 잠김, 잠금 표시) + 퀘스트 다양화(랜덤 결 10종 + 최근 퀘스트 반복금지)
 // 버전 3곳 동시 갱신: (1) 이 주석, (2) BEASTLOG_VERSION, (3) manifest.json
 
-const BEASTLOG_VERSION = '0.36.0';
+const BEASTLOG_VERSION = '0.37.0';
 const MODULE = 'beast_log';
 let LAST_ERROR = '';
 try { console.log('[비스트로그] script loaded v' + BEASTLOG_VERSION); } catch (e) { /* noop */ }
@@ -153,14 +153,22 @@ ${getScene()}규칙:
 [대화 맥락]
 ${getConvo()}`;
 }
+const QUEST_FLAVORS = ['엉뚱하고 사소한 행동 도전', '{{char}}와의 관계·감정이 얽힌 것', '주변을 관찰하거나 탐험하는 것', '뭔가 줍거나 손에 넣는 것', '말장난·대화로 승부 보는 것', '용기 내거나 민망함을 무릅쓰는 것', '{{char}}의 의외의 반응을 끌어내는 것', '주인공 자신의 사소한 습관·실수에 관한 것', '둘 사이 분위기를 바꾸는 것', '하찮지만 묘하게 어려운 것'];
+function recentQuestsHint() {
+    const goals = [];
+    (STATE.quests || []).forEach(q => goals.push(q.goal));
+    (STATE.secrets || []).forEach(s => { if (s.goal) goals.push(s.goal); });
+    if (!goals.length) return '';
+    return `\n[최근 퀘스트] ${goals.slice(0, 8).join(' / ')}\n위와 겹치거나 비슷한 목표는 절대 내지 마라. 결도 소재도 완전히 다른 걸로.`;
+}
 function buildQuestPrompt() {
     return `너는 RP 주인공({{char}})에게 줄 "퀘스트"(목표+보상)를 하나 만든다.
 ${getScene()}규칙:
-- 목표(goal)는 이 RP 안에서 {{char}}/유저의 행동·대사로 달성 가능한 것이어야 한다. 시스템이 강제하는 게 아니라, 두 사람이 대화하다 보면 일어날 법한 일.
-  예: "{{char}}에게 바보라고 불리기", "{{char}}를 한 번 웃기기", "같이 길거리 셀카 찍기", "{{char}}가 먼저 손 잡게 만들기". 세계관/분위기에 맞게.
-- 너무 거창하거나 추상적인 거(세계 구하기 등) 금지. 한 장면~몇 턴 안에 자연스럽게 달성될 소소한 것.
-- 데드팬/엉뚱한 유머. 한국어.
-- 보상(rewardType): 대부분 "money"(1만~10만원). 가끔 "item"(엉뚱한 물건). 관계·감정이 얽힌 목표면 가끔 "secret"({{char}}의 의외의 비밀 — 달성하면 공개됨).
+- 목표(goal)는 이 RP 안에서 {{char}}/유저의 행동·대사로 달성 가능한 것. 시스템이 강제하는 게 아니라, 대화하다 보면 일어날 법한 일.
+- 이번 퀘스트는 "${pick(QUEST_FLAVORS)}" 쪽 방향으로 잡아라. 매번 색깔이 다르게, 진부하지 않게.
+- 다양한 예시 결: "{{char}}에게 바보라고 불리기", "길에서 쓸모없는 물건 하나 줍기", "{{char}}를 말문 막히게 하기", "모르는 사람에게 말 걸기", "{{char}}가 먼저 웃게 만들기", "이 장소에서 이상한 것 하나 발견하기", "{{char}} 앞에서 크게 망신당하기" 등 — 단, 위는 예시일 뿐 그대로 베끼지 말고 지금 장면에 맞는 새 걸 지어라.
+- 너무 거창/추상(세계 구하기 등) 금지. 한 장면~몇 턴 안에 자연스럽게 될 소소한 것. 데드팬·엉뚱 유머. 한국어.
+- 보상(rewardType): 대부분 "money"(1만~10만). 가끔 "item"(엉뚱한 물건). 관계·감정이 얽힌 목표면 가끔 "secret"({{char}}의 의외의 비밀, 달성 시 공개).${recentQuestsHint()}
 형식(JSON만, 코드펜스 금지): {"goal":"목표 한 줄","emoji":"목표 이모지 하나","rewardType":"money|item|secret","reward":money면 정수·item이면 "물건이름"·secret이면 null}
 [대화 맥락]
 ${getConvo()}`;
@@ -225,6 +233,8 @@ function resetMoney() { showConfirm('돈 리셋', `보유 금액 ${fmtMoney(STAT
 
 // ── 퀘스트 (RP 읽어 판정, 주입 없음) ──
 const QUEST_MAX = 3;
+function questRemaining() { const cd = (STATE.questCD == null ? 0 : STATE.questCD); return Math.max(0, cd - (getChatLen() - (STATE.lastQuestTurn == null ? -99 : STATE.lastQuestTurn))); }
+function canQuest() { return questRemaining() <= 0; }
 function normalizeQuest(o) {
     o = o || {};
     let rt = (o.rewardType === 'item' || o.rewardType === 'secret') ? o.rewardType : 'money';
@@ -235,7 +245,8 @@ function normalizeQuest(o) {
 }
 async function onNewQuest() {
     if (_blBusy) return;
-    if ((STATE.quests || []).length >= QUEST_MAX) { flash(`퀘스트는 최대 ${QUEST_MAX}개까지`); return; }
+    if ((STATE.quests || []).length >= QUEST_MAX) { showNote('🎯 퀘스트', '의뢰판이 꽉 찼다', `진행 중인 퀘스트 ${QUEST_MAX}개부터 끝내라.`); return; }
+    if (!canQuest()) { showNote('🎯 퀘스트', '새 의뢰가 아직 없다', `${questRemaining()}턴쯤 더 굴러야 새 게 들어온다.`); return; }
     _blBusy = true; showLoading('퀘스트 받는 중…');
     try {
         const txt = await llmGenerate(buildQuestPrompt(), 2048);
@@ -243,7 +254,11 @@ async function onNewQuest() {
     } catch (err) { closePopup(); if (!handleLlmError(err)) addQuest(normalizeQuest({ goal: '{{char}} 한 번 웃기기', emoji: '😄', rewardType: 'money', reward: 30000 })); }
     finally { _blBusy = false; }
 }
-function addQuest(q) { STATE.quests = STATE.quests || []; STATE.quests.unshift(q); saveState(STATE); renderFull(); flash(`🎯 새 퀘스트: ${q.goal}`); }
+function addQuest(q) {
+    STATE.quests = STATE.quests || []; STATE.quests.unshift(q);
+    STATE.lastQuestTurn = getChatLen(); STATE.questCD = 2 + Math.floor(Math.random() * 3);   // 다음 퀘스트까지 2~4턴 잠김
+    saveState(STATE); renderFull(); flash(`🎯 새 퀘스트: ${q.goal}`);
+}
 function deleteQuest(id) { STATE.quests = (STATE.quests || []).filter(q => q.id !== id); saveState(STATE); renderFull(); }
 async function onCheckQuest(id) {
     if (_blBusy) return;
@@ -1111,6 +1126,7 @@ function buildFull() {
           <div class="bl-tab-panel" data-panel="quest" hidden>
             <div class="bl-quest">
               <button class="bl-quest-new">🎲 퀘스트 받기</button>
+              <div class="bl-quest-cd"></div>
               <div class="bl-quest-list"></div>
               <div class="bl-acc bl-secrets-acc collapsed">
                 <div class="bl-acc-head"><h3>🔒 알아낸 비밀</h3><span class="bl-rule"></span><span class="bl-secrets-cnt num"></span><span class="bl-chev">▾</span></div>
@@ -1282,6 +1298,8 @@ function renderQuests() {
     if (!fullEl) return;
     const ql = fullEl.querySelector('.bl-quest-list'); if (!ql) return;
     const qs = STATE.quests || [];
+    const qcd = fullEl.querySelector('.bl-quest-cd');
+    if (qcd) { const r = questRemaining(); qcd.textContent = qs.length >= QUEST_MAX ? '🔒 의뢰판이 꽉 찼다 (3/3) — 먼저 끝내기' : (r > 0 ? `🔒 ${r}턴 뒤 새 의뢰` : '🎲 새 의뢰 받을 수 있음'); }
     ql.innerHTML = qs.length ? qs.map(q => `
         <div class="bl-quest-card">
           <div class="bl-q-top"><span class="bl-q-emoji">${q.emoji || '🎯'}</span><span class="bl-q-goal">${escapeHtml(q.goal)}</span></div>
