@@ -1,7 +1,7 @@
-// 🐯 비스트로그 (Beast Log) v0.37.0-beta — 퀘스트 받기 쿨다운(랜덤 2~4턴 잠김, 잠금 표시) + 퀘스트 다양화(랜덤 결 10종 + 최근 퀘스트 반복금지)
+// 🐯 비스트로그 (Beast Log) v0.39.0-beta — 메인 3종 진화 비주얼 변신: 호랑이=골드+왕관+내려다보는눈 / 고양이=칠흑+빛나는눈 / 강아지=늑대회색+사나운눈 (Lv5 색짙어짐, Lv10 각성). spriteSVG에 tier 추가, 감정표정 우선
 // 버전 3곳 동시 갱신: (1) 이 주석, (2) BEASTLOG_VERSION, (3) manifest.json
 
-const BEASTLOG_VERSION = '0.37.0';
+const BEASTLOG_VERSION = '0.39.0';
 const MODULE = 'beast_log';
 let LAST_ERROR = '';
 try { console.log('[비스트로그] script loaded v' + BEASTLOG_VERSION); } catch (e) { /* noop */ }
@@ -51,9 +51,24 @@ const EYE_EXPR = {
     tired: [[4, 9], [5, 9], [10, 9], [11, 9]],                            // - -
     blink: [[4, 9], [5, 9], [6, 9], [9, 9], [10, 9], [11, 9]],            // _ _
     wink:  [[4, 8], [5, 8], [4, 9], [5, 9], [9, 9], [10, 9], [11, 9]],    // ▣ _
+    regal: [[4, 8], [5, 8], [10, 8], [11, 8]],                           // 내려다보는 눈(윗눈꺼풀)
+    fierce:[[4, 8], [5, 9], [10, 9], [11, 8]],                           // 사나운 눈(빗금)
 };
-function spriteSVG(key, size, mono, expr) {
+// 진화 비주얼: tier2(자란다)=색 짙어짐, tier3(각성)=고유 변신. mono모드/picker/shop엔 미적용(tier 1)
+const EVO_VIS = {
+    tiger: { 2: { pal: { O: '#ef9a1d' } }, 3: { pal: { O: '#f7c948', B: '#7a4a12' }, crown: '#ffd84d', expr: 'regal' } },
+    cat:   { 2: { pal: { O: '#8d93a0' } }, 3: { pal: { O: '#3a3f50', C: '#2a2e3c' }, eyeColor: '#74e3c4' } },
+    dog:   { 2: { pal: { O: '#c2a378' } }, 3: { pal: { O: '#9aa0aa', D: '#4a4e57', C: '#dde1e7' }, expr: 'fierce' } },
+};
+const EVO_CROWN = [[5, 1], [6, 1], [7, 1], [8, 1], [9, 1], [5, 0], [7, 0], [9, 0]];  // 띠5 + 뿔3
+function evoTier(lv) { return lv >= 10 ? 3 : (lv >= 5 ? 2 : 1); }
+function spriteSVG(key, size, mono, expr, tier) {
     const s = BL_SPRITES[key] || BL_SPRITES.tiger;
+    const vis = (!mono && tier && tier > 1 && EVO_VIS[key]) ? EVO_VIS[key][tier] : null;
+    const palOv = vis && vis.pal;
+    // 진화 표정은 중립(open)일 때만 적용 — 감정(슬픔/기쁨/깜빡임)이 항상 우선
+    let effExpr = expr;
+    if (vis && vis.expr && (!expr || expr === 'open')) effExpr = vis.expr;
     const grid = [];
     for (let y = 0; y < s.h; y++) {
         const row = s.rows[y]; const line = [];
@@ -62,17 +77,23 @@ function spriteSVG(key, size, mono, expr) {
             let fill = null;
             if (c !== '.') {
                 if (mono) fill = MONO_INK.has(c) ? BL_INK : null;
+                else if (palOv && palOv[c]) fill = palOv[c];
                 else fill = (c === 'K') ? BL_INK : (s.pal[c] || BL_INK);
             }
             line.push(fill);
         }
         grid.push(line);
     }
-    if (expr && expr !== 'open' && EYE_EXPR[expr]) {
-        const body = mono ? null : (s.pal[s.eyeBg || 'O'] || s.pal.O || BL_INK);
-        for (const [x, y] of EYE_BASE) grid[y][x] = body;          // 눈 지움(몸색)
-        for (const [x, y] of EYE_EXPR[expr]) grid[y][x] = BL_INK;  // 표정 그림
+    if (effExpr && effExpr !== 'open' && EYE_EXPR[effExpr]) {
+        const body = mono ? null : ((palOv && palOv[s.eyeBg || 'O']) || s.pal[s.eyeBg || 'O'] || s.pal.O || BL_INK);
+        for (const [x, y] of EYE_BASE) grid[y][x] = body;             // 눈 지움(몸색)
+        for (const [x, y] of EYE_EXPR[effExpr]) grid[y][x] = BL_INK;  // 표정 그림
     }
+    if (vis && vis.eyeColor) {                                         // 빛나는 눈(고양이 각성)
+        const coords = (effExpr && effExpr !== 'open' && EYE_EXPR[effExpr]) ? EYE_EXPR[effExpr] : EYE_BASE;
+        for (const [x, y] of coords) if (grid[y][x] === BL_INK) grid[y][x] = vis.eyeColor;
+    }
+    if (vis && vis.crown) for (const [x, y] of EVO_CROWN) grid[y][x] = vis.crown;  // 왕관(호랑이 각성)
     let rects = '';
     for (let y = 0; y < s.h; y++) {
         let x = 0;
@@ -94,12 +115,12 @@ function stateExpr() {
     if (STATE.mood >= 4 && STATE.hunger >= 3) return 'happy';
     return 'open';
 }
-function mascotSVG(size, expr) { return spriteSVG(EXT.mascot, size, EXT.spriteMono === true, expr || stateExpr()); }
+function mascotSVG(size, expr) { return spriteSVG(EXT.mascot, size, EXT.spriteMono === true, expr || stateExpr(), evoTier(STATE.level)); }
 function setMascotEls(expr) {
-    const mono = EXT.spriteMono === true;
-    if (consoleEl) { const e = consoleEl.querySelector('.bl-pet-emoji-mini'); if (e) e.innerHTML = spriteSVG(EXT.mascot, 30, mono, expr); }
-    if (fullEl && fullEl.style.display !== 'none') { const e = fullEl.querySelector('.bl-pet-emoji'); if (e) e.innerHTML = spriteSVG(EXT.mascot, 72, mono, expr); }
-    if (bubbleEl && bubbleEl.style.display !== 'none') bubbleEl.innerHTML = spriteSVG(EXT.mascot, 34, mono, expr);
+    const mono = EXT.spriteMono === true, tier = evoTier(STATE.level);
+    if (consoleEl) { const e = consoleEl.querySelector('.bl-pet-emoji-mini'); if (e) e.innerHTML = spriteSVG(EXT.mascot, 30, mono, expr, tier); }
+    if (fullEl && fullEl.style.display !== 'none') { const e = fullEl.querySelector('.bl-pet-emoji'); if (e) e.innerHTML = spriteSVG(EXT.mascot, 72, mono, expr, tier); }
+    if (bubbleEl && bubbleEl.style.display !== 'none') bubbleEl.innerHTML = spriteSVG(EXT.mascot, 34, mono, expr, tier);
 }
 let blinkTimer = null;
 function startBlink() {
