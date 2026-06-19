@@ -1,7 +1,7 @@
-// 🐯 비스트로그 (Beast Log) v0.22.0 — 큰창 4탭 구조(메인/알바/상점/세팅) + 설정류 전부 세팅탭으로 이동
+// 🐯 비스트로그 (Beast Log) v0.25.0 — 양방향 관계 트랙(익숙함↔피함, 수치 숨김) + 장소 태그 + 조건부 기억 주입(현재 장면 장소 맞을 때만 회상) + 관계 반영 결과
 // 버전 3곳 동시 갱신: (1) 이 주석, (2) BEASTLOG_VERSION, (3) manifest.json
 
-const BEASTLOG_VERSION = '0.22.0';
+const BEASTLOG_VERSION = '0.25.0';
 const MODULE = 'beast_log';
 let LAST_ERROR = '';
 try { console.log('[비스트로그] script loaded v' + BEASTLOG_VERSION); } catch (e) { /* noop */ }
@@ -38,30 +38,75 @@ const BL_SPRITES = {
   chick: { w:16, h:15, pal:{O:'#f6d442',Y:'#ee882a',P:'#f09e9e'}, rows:['................','................','...KKKKKKKKKK...','..KOOOOOOOOOOK..','.KOOOOOOOOOOOOK.','.KOOOOOOOOOOOOK.','.KOOOOOOOOOOOOK.','.KOOOOOOOOOOOOK.','.KOOKKOOOOKKOOK.','.KPPKKOOOOKKPPK.','.KOOOOOOOOOOOOK.','.KOOOOYYYYOOOOK.','.KOOOOOYYOOOOOK.','..KKKKKKKKKKKK..','................'] },
 };
 const MONO_INK = new Set(['K', 'B', 'D', 'Y', 'P', 'N']);
-function spriteSVG(key, size, mono) {
+// 표정: 눈 자리(2x2 기본)를 지우고 표정별 픽셀로 다시 그림
+const EYE_BASE = [[4, 8], [5, 8], [4, 9], [5, 9], [10, 8], [11, 8], [10, 9], [11, 9]];
+const EYE_EXPR = {
+    open:  [[4, 8], [5, 8], [4, 9], [5, 9], [10, 8], [11, 8], [10, 9], [11, 9]],
+    happy: [[5, 8], [4, 9], [6, 9], [10, 8], [9, 9], [11, 9]],            // ^ ^
+    sad:   [[4, 8], [6, 8], [5, 9], [9, 8], [11, 8], [10, 9]],            // ︵ ︵
+    tired: [[4, 9], [5, 9], [10, 9], [11, 9]],                            // - -
+    blink: [[4, 9], [5, 9], [6, 9], [9, 9], [10, 9], [11, 9]],            // _ _
+    wink:  [[4, 8], [5, 8], [4, 9], [5, 9], [9, 9], [10, 9], [11, 9]],    // ▣ _
+};
+function spriteSVG(key, size, mono, expr) {
     const s = BL_SPRITES[key] || BL_SPRITES.tiger;
-    let rects = '';
+    const grid = [];
     for (let y = 0; y < s.h; y++) {
-        const row = s.rows[y];
-        let x = 0;
-        while (x < s.w) {
+        const row = s.rows[y]; const line = [];
+        for (let x = 0; x < s.w; x++) {
             const c = row[x];
             let fill = null;
             if (c !== '.') {
                 if (mono) fill = MONO_INK.has(c) ? BL_INK : null;
                 else fill = (c === 'K') ? BL_INK : (s.pal[c] || BL_INK);
             }
-            if (fill === null) { x++; continue; }
+            line.push(fill);
+        }
+        grid.push(line);
+    }
+    if (expr && expr !== 'open' && EYE_EXPR[expr]) {
+        const body = mono ? null : (s.pal.O || BL_INK);
+        for (const [x, y] of EYE_BASE) grid[y][x] = body;          // 눈 지움(몸색)
+        for (const [x, y] of EYE_EXPR[expr]) grid[y][x] = BL_INK;  // 표정 그림
+    }
+    let rects = '';
+    for (let y = 0; y < s.h; y++) {
+        let x = 0;
+        while (x < s.w) {
+            const f = grid[y][x];
+            if (f === null) { x++; continue; }
             let run = 1;
-            while (x + run < s.w && row[x + run] === c) run++;
-            rects += `<rect x="${x}" y="${y}" width="${run}" height="1" fill="${fill}"/>`;
+            while (x + run < s.w && grid[y][x + run] === f) run++;
+            rects += `<rect x="${x}" y="${y}" width="${run}" height="1" fill="${f}"/>`;
             x += run;
         }
     }
     const h = Math.round(size * s.h / s.w);
     return `<svg class="bl-sprite" width="${size}" height="${h}" viewBox="0 0 ${s.w} ${s.h}" shape-rendering="crispEdges" xmlns="http://www.w3.org/2000/svg">${rects}</svg>`;
 }
-function mascotSVG(size) { return spriteSVG(EXT.mascot, size, EXT.spriteMono === true); }
+function stateExpr() {
+    if (STATE.hp <= 1) return 'tired';
+    if (STATE.mood <= 0) return 'sad';
+    if (STATE.mood >= 3 && STATE.hunger >= 2) return 'happy';
+    return 'open';
+}
+function mascotSVG(size, expr) { return spriteSVG(EXT.mascot, size, EXT.spriteMono === true, expr || stateExpr()); }
+function setMascotEls(expr) {
+    const mono = EXT.spriteMono === true;
+    if (consoleEl) { const e = consoleEl.querySelector('.bl-pet-emoji-mini'); if (e) e.innerHTML = spriteSVG(EXT.mascot, 30, mono, expr); }
+    if (fullEl && fullEl.style.display !== 'none') { const e = fullEl.querySelector('.bl-pet-emoji'); if (e) e.innerHTML = spriteSVG(EXT.mascot, 72, mono, expr); }
+    if (bubbleEl && bubbleEl.style.display !== 'none') bubbleEl.innerHTML = spriteSVG(EXT.mascot, 34, mono, expr);
+}
+let blinkTimer = null;
+function startBlink() {
+    if (blinkTimer) return;
+    blinkTimer = setInterval(() => {
+        if (typeof document !== 'undefined' && document.hidden) return;
+        if (Math.random() > 0.5) return;
+        setMascotEls('blink');
+        setTimeout(() => setMascotEls(stateExpr()), 160);
+    }, 3600);
+}
 function curMascot() { return MASCOTS[EXT.mascot] || MASCOTS.tiger; }
 function evoStage(lv) { const st = curMascot().stages; for (const e of st) { if (lv >= e.min) return e; } return st[st.length - 1]; }
 
@@ -71,10 +116,20 @@ function rollRarity() { const r = Math.random(); if (r < 0.005) return 'legend';
 const BAIT_CHANCE = { common: 0.10, rare: 0.40, epic: 0.70, legend: 1.0 };
 function rollItemType(rarity) { return Math.random() < (BAIT_CHANCE[rarity] != null ? BAIT_CHANCE[rarity] : 0.10) ? 'bait' : 'junk'; }
 
-// ── 관계 ──
-const REL_TIERS = [{ min: 80, label: '죽마고우' }, { min: 50, label: '친해진 사이' }, { min: 25, label: '아는 사이일지도?' }, { min: 10, label: '몇 번 본 사이' }, { min: 0, label: '낯선 사이' }];
-function relTier(aff) { for (const t of REL_TIERS) { if (aff >= t.min) return t.label; } return '낯선 사이'; }
-function affinityDelta(kind) { return ({ help: 2, cooperate: 3, activity: 1, interact: 0, loot: 0, flee: 0, attack: -1 })[kind] || 0; }
+// ── 관계 (양방향 "익숙함" 트랙, 내부 수치는 숨김) ──
+const REL_TIERS = [
+    { min: 24, label: '단골', tone: 'warm' },
+    { min: 14, label: '친근함', tone: 'warm' },
+    { min: 7, label: '익숙함', tone: 'warm' },
+    { min: 3, label: '몇 번 본 사이', tone: 'mid' },
+    { min: 0, label: '낯섦', tone: 'mid' },
+    { min: -3, label: '경계', tone: 'cold' },
+    { min: -8, label: '불신', tone: 'cold' },
+    { min: -9999, label: '피함', tone: 'cold' },
+];
+function relTierObj(aff) { for (const t of REL_TIERS) { if (aff >= t.min) return t; } return REL_TIERS[REL_TIERS.length - 1]; }
+function relTier(aff) { return relTierObj(aff).label; }
+function affinityDelta(kind) { return ({ help: 2, cooperate: 3, activity: 1, interact: 0, loot: 0, flee: 0, attack: -2 })[kind] || 0; }
 
 // ── 로딩/후일담 풀 ──
 const LOAD_APPEAR = ['두리번거리는 중...', '킁킁 냄새 맡는 중...', '골목을 기웃거리는 중...', '수상한 기척을 쫓는 중...', '풀숲을 헤집는 중...', '누군가 다가오는 중...', '뭔가 어슬렁대는 중...', '주변을 살피는 중...', '발소리를 듣는 중...', '고개를 갸웃하는 중...', '냄새의 출처를 찾는 중...'];
@@ -172,7 +227,7 @@ function resolveByKind(item, kind) {
 // ── LLM 엔진 ──
 const VALID_KINDS = ['help', 'cooperate', 'activity', 'loot', 'interact', 'flee', 'attack'];
 function stripTags(s) { return String(s || '').replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim(); }
-function depthN() { return ({ balance: 2, '5': 5, '10': 10, '15': 15, all: 9999 })[EXT.contextDepth] || 2; }
+function depthN() { return ({ balance: 6, '5': 5, '10': 10, '15': 15, all: 9999 })[EXT.contextDepth] || 6; }
 function getConvo() {
     const ctx = getCtx();
     if (!ctx || !Array.isArray(ctx.chat)) return '(대화 없음)';
@@ -226,15 +281,32 @@ async function llmGenerate(prompt, maxTokens) {
     }
     throw { code: 'nogen' };
 }
-const RULES_FIT = '반드시 현재 대화 맥락(장소/시대/등장인물/분위기)에 어울려야 한다. 맥락에 없는 뜬금없는 대상(예: 한국 회사원, 김대리)을 만들지 마라. 무겁지 않은 일상 + 데드팬 코미디. 한국어로만. JSON만, 설명/코드펜스 금지.';
+function getScene() {
+    const ctx = getCtx(); if (!ctx) return '';
+    const bits = [];
+    try {
+        if (ctx.name2) bits.push(`상대 캐릭터: ${ctx.name2}`);
+        const char = ctx.characters && ctx.characters[ctx.characterId];
+        if (char) {
+            const scen = String((char.scenario) || (char.data && char.data.scenario) || '').trim();
+            const desc = String(char.description || (char.data && char.data.description) || '').trim();
+            const src = scen || desc;
+            if (src) bits.push(`설정: ${stripTags(src).replace(/\{\{user\}\}/gi, ctx.name1 || '유저').replace(/\{\{char\}\}/gi, ctx.name2 || '상대').slice(0, 320)}`);
+        }
+        if (ctx.name1) bits.push(`유저(나): ${ctx.name1}`);
+    } catch (e) {}
+    return bits.length ? `[장면/세계 정보]\n${bits.join('\n')}\n` : '';
+}
+const RULES_FIT = '반드시 현재 장면(장소/시대/세계관/등장인물/분위기/소품)에 어울려야 한다. 장면의 구체적 단서(나온 장소·물건·인물·사건)를 적극 활용해 거기서 끌어내라. 맥락이 빈약하더라도 아무 동물이나(특히 다람쥐·비둘기) 기계적으로 반복하지 마라 — 장면이 판타지면 판타지답게, 현대면 현대답게, SF면 SF답게. 맥락에 없는 뜬금없는 대상(예: 한국 회사원, 김대리)을 만들지 마라. 무겁지 않은 일상 + 데드팬 코미디. 한국어로만. JSON만, 설명/코드펜스 금지.';
 function buildAppearPrompt() {
     return `너는 RP 채팅에 어울리는 "조우 이벤트"를 만든다. 이 장면에 자연스럽게 나타날 법한 대상(인물/생물/사물) 하나.
 ${RULES_FIT}
 선택지 3개(서로 다른 대응), 각 kind는 help/cooperate/activity/loot/interact/flee/attack 중 하나. attack은 괜히 시비 거는 선택.
 foeType은 대상이 사람이면 "person", 동물/생물이면 "creature", 물건/사물이면 "object".
-형식: {"category":"npc","emoji":"이모지 하나","title":"~가 나타났다/다가온다/보인다 류 한 문장","foe":"대상 이름(없으면 null)","foeType":"person|creature|object","choices":[{"label":"...","kind":"..."},{"label":"...","kind":"..."},{"label":"...","kind":"flee"}]}
+place=이 조우가 일어나는 장소를 짧게(예: 중앙공원 / 강의실 / 선술집 / 골목). env=그 장소 환경 태그 2~4개(예: ["야외","공원","나무"] 또는 ["실내","학교"]). 이건 나중에 "비슷한 장소에서만 다시 떠오르게" 쓰는 값이니 정확히.
+형식: {"category":"npc","emoji":"이모지 하나","title":"~가 나타났다/다가온다/보인다 류 한 문장","foe":"대상 이름(없으면 null)","foeType":"person|creature|object","place":"장소","env":["태그",...],"choices":[{"label":"...","kind":"..."},{"label":"...","kind":"..."},{"label":"...","kind":"flee"}]}
 ${knownNpcsHint()}
-[대화 맥락]
+${getScene()}[대화 맥락]
 ${getConvo()}`;
 }
 function buildSituationPrompt() {
@@ -242,16 +314,23 @@ function buildSituationPrompt() {
 ${RULES_FIT}
 선택지 3개. 형식: {"category":"situation","emoji":"이모지 하나","title":"한 문장","desc":"짧은 묘사 한 줄","choices":[{"label":"...","kind":"activity"},{"label":"...","kind":"interact"},{"label":"...","kind":"flee"}]}
 
-[대화 맥락]
+${getScene()}[대화 맥락]
 ${getConvo()}`;
 }
 function buildResolvePrompt(item, choiceLabel, kind, history) {
     const hist = (history && history.length)
         ? `이 조우는 여러 박자로 이어졌다:\n${history.map((h, i) => `${i + 1}. ${h.title} → 선택: ${h.choice}`).join('\n')}\n그리고 마지막 선택: ${choiceLabel}\n결과/후일담은 이 전체 흐름을 반영해라.\n`
         : '';
+    let relCtx = '';
+    const n = item.foe ? STATE.npcs[item.foe] : null;
+    if (n && n.metCount > 0) {
+        const d = daysSince(n.lastMetTs);
+        relCtx = `[이 대상과의 기존 관계] ${n.nickname || n.name} · 관계: ${n.tier} · ${n.metCount}번째 만남${n.lastPlace ? ` · 주 출몰: ${n.lastPlace}` : ''}${n.state && n.state !== '평범함' ? ` · 최근 상태: ${n.state}` : ''}${n.memory ? ` · 기억: ${stripTags(n.memory)}` : ''}.
+이 관계 단계에 맞게 반응해라 — 차가우면(경계/불신/피함) 상대가 거리를 두거나 경계/회피하고(예: 현금통을 끌어당김, 손을 피해 담장 위로 올라감), 따뜻하면(익숙함/단골) 반갑게 군다. inner.foe와 after에 그 온도가 묻어나야 한다.\n`;
+    }
     return `RP 이벤트의 "결과"와 "뒷소문"을 만든다.
 이벤트: ${item.title} / 선택: ${choiceLabel} (kind:${kind})
-${hist}규칙: 데드팬 코미디, 한국어. exp=경험치 정수. rep=평판 변화 정수(좋은 행동 +, 괜히 시비/민폐 -). affDelta=관계 변화 정수(없으면 0).
+${relCtx}${hist}규칙: 데드팬 코미디, 한국어. exp=경험치 정수. rep=평판 변화 정수(좋은 행동 +, 괜히 시비/민폐 -). affDelta=관계 변화 정수(없으면 0).
 inner.foe=상대/주변의 진짜 속내(수치와 어긋나도 됨, 그게 재미). inner.user=유저 속내 추측("~했을지도/~었을 것이다" 식 단정 금지).
 after=가끔만(대개 null) 며칠 뒤 오해/뒷이야기 한 줄. drop=주운 물건 있으면 {name,emoji,price:0}, 없으면 null.
 대상(인물/생물)이 있으면: npcMemory=그 대상에 대해 오래 남을 한 줄 기억(없으면 null), npcState=그 대상의 현재 상태 짧게(없으면 null). JSON만.
@@ -292,6 +371,8 @@ function normalizeEvent(o, cat) {
         foe: (o.foe && o.foe !== 'null') ? String(o.foe) : null,
         foeType: ['person', 'creature', 'object'].includes(o.foeType) ? o.foeType : 'creature',
         desc: o.desc ? String(o.desc) : '',
+        place: (o.place && o.place !== 'null') ? String(o.place).slice(0, 24) : '',
+        env: Array.isArray(o.env) ? o.env.map(s => String(s).replace(/[#\s]/g, '').slice(0, 12)).filter(Boolean).slice(0, 5) : [],
         choices,
     };
 }
@@ -336,12 +417,14 @@ function applyOutcome(item, choiceLabel, outcome, kind) {
 
     if (item.foe) {
         const isNew = !STATE.npcs[item.foe];
-        const reg = STATE.npcs[item.foe] || { name: item.foe, nickname: '', emoji: item.emoji, dexType: 'creature', affinity: 0, metCount: 0, firstMet: nowDate(), lastMet: nowDate(), tier: '낯선 사이', state: '평범함', memory: '', log: [], terjut: false };
+        const reg = STATE.npcs[item.foe] || { name: item.foe, nickname: '', emoji: item.emoji, dexType: 'creature', affinity: 0, metCount: 0, firstMet: nowDate(), lastMet: nowDate(), tier: '낯섦', state: '평범함', memory: '', log: [], terjut: false, firstPlace: '', lastPlace: '', env: [] };
         const before = reg.tier;
         const disp = reg.nickname || reg.name;
-        reg.metCount += 1; reg.affinity += affDelta; reg.lastMet = nowDate();
-        if (isNew) reg.firstMet = nowDate();
+        reg.metCount += 1; reg.affinity += affDelta; reg.lastMet = nowDate(); reg.lastMetTs = Date.now();
+        if (isNew) { reg.firstMet = nowDate(); reg.firstMetTs = Date.now(); }
         if (item.foeType) reg.dexType = item.foeType;
+        if (item.place) { if (!reg.firstPlace) reg.firstPlace = item.place; reg.lastPlace = item.place; }
+        if (Array.isArray(item.env) && item.env.length) reg.env = Array.from(new Set([...(reg.env || []), ...item.env])).slice(0, 8);
         reg.tier = relTier(reg.affinity); reg.terjut = reg.metCount >= 5;
         const stateChanged = outcome.npcState && outcome.npcState !== reg.state;
         if (outcome.npcState) reg.state = outcome.npcState;
@@ -366,18 +449,15 @@ function applyOutcome(item, choiceLabel, outcome, kind) {
     levelCheck();
     saveState(STATE);
     renderAll();
-    if (STATE.settings.injectDefault) {
-        const foeBeat = entry.inner && entry.inner.foe ? ' ' + entry.inner.foe : '';
-        injectProse(`(${entry.desc}.${foeBeat})`);
-    }
+    refreshMemory();
     showResultPopup(entry);
 }
 function clamp03(n) { return Math.max(0, Math.min(3, n)); }
 function levelCheck() { const need = STATE.level * 100; if (STATE.xp >= need) { STATE.xp -= need; STATE.level += 1; flash(`⭐ 레벨업! Lv.${STATE.level}`); } }
 
 // ── 정리/삭제 ──
-function deleteEncounter(id) { STATE.encounters = STATE.encounters.filter(x => x.id !== id); saveState(STATE); renderFull(); }
-function clearEncounters() { showConfirm('모험일지 비우기', '기록을 전부 지울까요? 되돌릴 수 없어요.', () => { STATE.encounters = []; saveState(STATE); renderAll(); }); }
+function deleteEncounter(id) { STATE.encounters = STATE.encounters.filter(x => x.id !== id); saveState(STATE); renderFull(); refreshMemory(); }
+function clearEncounters() { showConfirm('모험일지 비우기', '기록을 전부 지울까요? 되돌릴 수 없어요.', () => { STATE.encounters = []; saveState(STATE); renderAll(); refreshMemory(); }); }
 function deleteItem(id) { STATE.items = STATE.items.filter(x => x.id !== id); saveState(STATE); renderAll(); }
 function clearItems() { showConfirm('가방 비우기', '소지품을 전부 버릴까요?', () => { STATE.items = []; saveState(STATE); renderAll(); }); }
 function deleteNpc(name) {
@@ -390,19 +470,58 @@ function deleteNpc(name) {
 }
 function clearNpcs() { showConfirm('도감 전체 삭제', '인물 도감을 통째로 비울까요? 되돌릴 수 없어요.', () => { STATE.npcs = {}; STATE.currentNpc = null; saveState(STATE); renderAll(); }); }
 
-// ── 주입 ──
-function injectProse(prose) {
-    if (!canInject()) { flash(`아직 텀 — ${injectRemaining()}턴 후 (일지엔 기록됨)`); return false; }
-    blDebug('주입 stub:', prose); markInject(); flash('챗에 반영됨'); return true;
+// ── 앰비언트 기억 주입 (setExtensionPrompt) ──
+// 보이는 메시지로 사건을 쑤셔넣지 않는다. 게다가 "현재 장면의 장소"와 맞는 주민만 떠올리게 한다.
+const MEM_KEY = 'beastlog_traces';
+function currentSceneText() {
+    const ctx = getCtx();
+    if (!ctx || !Array.isArray(ctx.chat)) return '';
+    return ctx.chat.filter(m => m && m.mes).slice(-6).map(m => stripTags(m.mes)).join(' ').toLowerCase();
+}
+function sceneMatch(n, scene) {
+    if (!scene) return false;
+    const terms = [n.lastPlace, n.firstPlace, ...(n.env || [])].filter(t => t && String(t).length >= 2);
+    return terms.some(t => scene.includes(String(t).toLowerCase()));
+}
+function daysSince(ts) { return ts ? Math.floor((Date.now() - ts) / 86400000) : null; }
+function buildMemoryBlock() {
+    const scene = currentSceneText();
+    const out = [];
+    for (const n of Object.values(STATE.npcs || {})) {
+        if (!sceneMatch(n, scene)) continue;            // 장소 안 맞으면 제외 (식당에서 다람쥐 금지)
+        const name = n.nickname ? `${n.name}(별명 ${n.nickname})` : n.name;
+        const place = n.lastPlace || n.firstPlace || '';
+        const bits = [`${n.emoji || ''} ${name} — 관계: ${n.tier}`];
+        if (place) bits.push(`주로 ${place}에서 마주침`);
+        if (n.state && n.state !== '평범함') bits.push(`최근 상태: ${n.state}`);
+        if (n.memory) bits.push(`기억: ${stripTags(n.memory)}`);
+        const d = daysSince(n.lastMetTs);
+        if (d != null && d >= 1) bits.push(`마지막으로 본 지 ${d}일`);
+        out.push('· ' + bits.join(' / '));
+        if (out.length >= 4) break;
+    }
+    if (!out.length) return '';
+    return `[비스트로그 — 지금 이 장소에서 떠오를 수 있는 것들]
+※ 아래는 현재 장면의 환경과 맞아떨어지는, 이미 아는 대상들이다.
+※ 자연스러울 때 {{char}}가 먼저 알아보거나 떠올려도 좋다. ("저 다람쥐, 전에 본 놈 아니냐" 처럼) — 관계 단계에 맞는 반응으로.
+※ 관계가 차가우면(경계/불신/피함) 그 대상은 {{char}}/주변을 피하거나 경계하고, 따뜻하면(익숙함/단골) 반갑게 군다.
+※ 강제로 등장시키거나 장면을 가로채지 마라. 환경이 맞아 자연스러울 때만 슬쩍.
+${out.join('\n')}`;
+}
+function refreshMemory() {
+    const ctx = getCtx();
+    if (!ctx || typeof ctx.setExtensionPrompt !== 'function') return;
+    const block = (STATE.settings.injectDefault) ? buildMemoryBlock() : '';
+    try { ctx.setExtensionPrompt(MEM_KEY, block, 1, 4); } catch (e) { blDebug('기억 주입 실패', e); }
 }
 function injectBait() {
     const bait = STATE.items.find(i => i.itemType === 'bait') || STATE.items[0];
     if (!bait) { flash('주울 게 없다'); return; }
-    injectProse(`(가방에서 ${bait.name}이(가) 굴러나왔다.)`);
+    flash(`🎣 ${bait.name} 만지작…`);
 }
 
 // ── 동기화/헬퍼 ──
-function setInjectDefault(v) { STATE.settings.injectDefault = v; saveState(STATE); renderAll(); syncControls(); }
+function setInjectDefault(v) { STATE.settings.injectDefault = v; saveState(STATE); renderAll(); refreshMemory(); syncControls(); }
 function setAutoDetect(v) { EXT.autoDetect = v; saveExt(); syncControls(); }
 function setChain(v) { EXT.chainOn = v; saveExt(); syncControls(); }
 function setSpriteMono(v) { EXT.spriteMono = v; saveExt(); renderAll(); syncControls(); }
@@ -453,7 +572,7 @@ function buildConsole() {
       <div class="bl-topbar">
         <span class="bl-grip">⠿</span><span class="bl-title">비스트로그</span>
         <span class="bl-spacer"></span>
-        <span class="bl-inject"><span class="bl-lab">📤</span><span class="bl-sw" data-on="true"></span></span>
+        <span class="bl-inject"><span class="bl-lab">🌱</span><span class="bl-sw" data-on="true"></span></span>
         <span class="bl-min" title="아이콘만">▁</span>
         <span class="bl-up" title="기록·설정 열기">📖</span>
       </div>
@@ -626,7 +745,7 @@ function buildFull() {
           </div>
           <div class="bl-tab-panel" data-panel="set" hidden>
             <div class="bl-full-toggles">
-              <label><span>📤 결과를 챗에 띄우기</span><input type="checkbox" class="bl-t-inject"></label>
+              <label><span>🌱 세계에 흔적 남기기 <small>(캐릭터가 기억으로 떠올림)</small></span><input type="checkbox" class="bl-t-inject"></label>
               <label><span>🔗 조우 체인 (3단계 전개)</span><input type="checkbox" class="bl-t-chain"></label>
               <label><span>🎨 마스코트 흑백(도트라인)</span><input type="checkbox" class="bl-t-mono"></label>
               <label><span>📥 자동 감지 (입구)</span><input type="checkbox" class="bl-t-auto"></label>
@@ -703,16 +822,23 @@ function dexCard(n) {
     const disp = n.nickname || n.name;
     const logHtml = (n.log && n.log.length)
         ? `<div class="bl-dex-log"><div class="bl-dex-logttl">🕰️ 변화 로그</div>${n.log.map(l => `<div class="bl-dex-logrow"><span class="num">${escapeHtml(l.date)}</span> ${escapeHtml(l.note)}</div>`).join('')}</div>` : '';
+    const place = n.lastPlace || n.firstPlace || '';
+    const tagHtml = (n.env && n.env.length)
+        ? `<div class="bl-dex-tags">${n.env.slice(0, 5).map(t => `<span class="bl-tag">#${escapeHtml(t)}</span>`).join('')}</div>` : '';
+    const d = daysSince(n.lastMetTs);
+    const tone = relTierObj(n.affinity || 0).tone;
     return `
       <div class="bl-dex${n._open ? '' : ' collapsed'}" data-npc="${escapeHtml(n.name)}">
         <div class="bl-dex-head">
           <span class="bl-dex-emoji">${n.emoji || '👤'}</span>
           <span class="bl-dex-nm">${escapeHtml(disp)}${n.terjut ? ' <span class="bl-terjut">터줏대감</span>' : ''}</span>
-          <span class="bl-dex-rel">${escapeHtml(n.tier)}</span><span class="bl-dex-chev">▾</span>
+          <span class="bl-dex-rel bl-tone-${tone}">${escapeHtml(n.tier)}</span><span class="bl-dex-chev">▾</span>
         </div>
         <div class="bl-dex-body">
+          ${place ? `<div class="bl-dex-row"><span>출몰 장소</span><b>${escapeHtml(place)}</b></div>` : ''}
+          ${tagHtml}
           <div class="bl-dex-row"><span>첫 조우</span><b class="num">${escapeHtml(n.firstMet || '기록 없음')}</b></div>
-          <div class="bl-dex-row"><span>최근 조우</span><b class="num">${escapeHtml(n.lastMet || '-')}</b></div>
+          <div class="bl-dex-row"><span>최근 조우</span><b class="num">${escapeHtml(n.lastMet || '-')}${d != null && d >= 1 ? ` <span class="bl-dim">(${d}일 전)</span>` : ''}</b></div>
           <div class="bl-dex-row"><span>조우 횟수</span><b class="num">${n.metCount}번</b></div>
           <div class="bl-dex-row"><span>현재 상태</span><b>${escapeHtml(n.state || '평범함')}</b></div>
           <div class="bl-dex-mem">💭 특별 기억 — ${n.memory ? escapeHtml(n.memory) : '<span class="bl-dim">아직 없음</span>'}</div>
@@ -1099,6 +1225,8 @@ function init() {
         buildConsole(); renderConsole(); applyConsolePos();
         buildSettingsWithRetry(10); buildWandMenuWithRetry(10);
         registerEvents();
+        startBlink();
+        setTimeout(refreshMemory, 1200);
         setTimeout(() => { ensureMounted(); applyConsolePos(); }, 300);
         setTimeout(() => { ensureMounted(); applyConsolePos(); }, 1500);
         setTimeout(ensureMounted, 4000);
