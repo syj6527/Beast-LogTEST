@@ -31,7 +31,7 @@
 .bl-title { font-family: var(--bl-chrome); font-size: 12px; color: #4A3C24; }
 .bl-min, .bl-up { font-size: 15px; cursor: pointer; line-height: 1; padding: 2px 3px; }
 .bl-min { color: #7A5C2C; }
-#beastlog-bubble { width: 52px; height: 52px; border-radius: 50%; background: var(--bl-point); border: 3px solid var(--bl-edge); box-shadow: 2px 3px 0 var(--bl-shadow); display: flex; align-items: center; justify-content: center; font-size: 26px; cursor: pointer; animation: bl-bob 2.4s ease-in-out infinite; }
+#beastlog-bubble { width: 52px; height: 52px; border-radius: 50%; background: var(--bl-point); border: 3px solid var(--bl-edge); box-shadow: 2px 3px 0 var(--bl-shadow); display: flex; align-items: center; justify-content: center; line-height: 0; cursor: pointer; animation: bl-bob 2.4s ease-in-out infinite; }
 #beastlog-bubble:active { transform: scale(.92); }
 .bl-spacer { flex: 1; }
 .bl-inject { display: flex; align-items: center; gap: 5px; background: var(--bl-card2); border: 2px solid var(--bl-edge); padding: 2px 6px; border-radius: 8px; }
@@ -51,7 +51,8 @@
 
 .bl-mini-status { background: var(--bl-card); border: 2px solid var(--bl-line); border-radius: 9px; padding: 8px 9px; }
 .bl-ms-row { display: flex; align-items: center; gap: 7px; margin-bottom: 6px; }
-.bl-pet-emoji-mini { font-size: 26px; cursor: pointer; line-height: 1; flex-shrink: 0; animation: bl-bob 2.4s ease-in-out infinite; }
+.bl-sprite { display: block; }
+.bl-pet-emoji-mini { cursor: pointer; line-height: 0; flex-shrink: 0; animation: bl-bob 2.4s ease-in-out infinite; }
 .bl-pet-emoji-mini:active { transform: scale(.9); }
 .bl-ms-id { display: flex; flex-direction: column; line-height: 1.25; min-width: 0; }
 .bl-ms-id .bl-pet-name { font-family: var(--bl-chrome); font-size: 10px; color: var(--bl-ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -104,7 +105,7 @@
 
 /* 로딩 / 알람 / 확인 */
 .bl-loading { text-align: center; }
-.bl-load-emoji { font-size: 40px; animation: bl-bob 1s ease-in-out infinite; }
+.bl-load-emoji { display: inline-block; line-height: 0; animation: bl-bob 1s ease-in-out infinite; }
 .bl-load-msg { font-family: var(--bl-prose); font-size: 13px; color: var(--bl-ink); margin: 8px 0 4px; }
 .bl-load-dots { font-family: var(--bl-chrome); font-size: 12px; color: var(--bl-point-d); animation: bl-blink 1s steps(1) infinite; }
 .bl-alarm { text-align: center; border-top: 6px solid #C98E84; }
@@ -131,7 +132,7 @@
 .bl-pet-name { font-family: var(--bl-chrome); font-size: 12px; color: var(--bl-ink); }
 .bl-pet-lv { font-family: var(--bl-chrome); font-size: 11px; color: var(--bl-point-d); }
 .bl-pet { margin: 6px 0; }
-.bl-pet-emoji { font-size: 50px; display: inline-block; animation: bl-bob 2.2s ease-in-out infinite; }
+.bl-pet-emoji { display: inline-block; line-height: 0; animation: bl-bob 2.2s ease-in-out infinite; }
 .bl-pet-card .bl-status { display: flex; justify-content: center; gap: 12px; font-family: var(--bl-chrome); font-size: 10px; color: var(--bl-ink-soft); margin: 4px 0 8px; flex-wrap: wrap; }
 .bl-pet-card .bl-status b { color: var(--bl-ink); letter-spacing: -1px; }
 .bl-pet-xptext { font-size: 9px; color: var(--bl-ink-soft); margin-bottom: 3px; }
@@ -140,8 +141,8 @@
 .bl-pet-stats { font-family: var(--bl-chrome); font-size: 10px; color: var(--bl-ink-soft); margin-top: 8px; }
 .bl-pet-stats b { color: var(--bl-ink); }
 .bl-pet-title { color: var(--bl-point-d); }
-.bl-pet-pick { display: flex; justify-content: center; gap: 6px; margin-top: 10px; }
-.bl-pick-btn { font-size: 17px; width: 36px; height: 32px; border: 2px solid var(--bl-line); background: var(--bl-card); border-radius: 9px; cursor: pointer; opacity: .5; }
+.bl-pet-pick { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin-top: 10px; }
+.bl-pick-btn { display: flex; align-items: center; justify-content: center; width: 38px; height: 36px; border: 2px solid var(--bl-line); background: var(--bl-card); border-radius: 9px; cursor: pointer; opacity: .5; }
 .bl-pick-btn.on { opacity: 1; border-color: var(--bl-point-d); background: var(--bl-btn); box-shadow: 1px 2px 0 var(--bl-shadow); }
 .bl-pick-btn:active { transform: translate(1px,1px); }
 

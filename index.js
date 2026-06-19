@@ -1,7 +1,7 @@
-// 🐯 비스트로그 (Beast Log) v0.20.2 — 결과 팝업: 후일담 붉은 칸 즉시 표시 + 3단계 조우 체인(도입→전개→결말, 토글) + 후일담 LLM 흐름 전체 반영
+// 🐯 비스트로그 (Beast Log) v0.21.0 — 마스코트 도트 스프라이트(SVG) 5종 탑재(호랑이·고양이·강아지·햄스터·병아리) + 흑백/컬러 토글
 // 버전 3곳 동시 갱신: (1) 이 주석, (2) BEASTLOG_VERSION, (3) manifest.json
 
-const BEASTLOG_VERSION = '0.20.2';
+const BEASTLOG_VERSION = '0.21.0';
 const MODULE = 'beast_log';
 let LAST_ERROR = '';
 try { console.log('[비스트로그] script loaded v' + BEASTLOG_VERSION); } catch (e) { /* noop */ }
@@ -24,8 +24,44 @@ const MASCOTS = {
     cat: { label: '고양이', stages: [{ min: 10, emoji: '🐈‍⬛', name: '밤의 지배자' }, { min: 5, emoji: '🐈', name: '고양이' }, { min: 1, emoji: '🐱', name: '새끼 고양이' }] },
     dog: { label: '강아지', stages: [{ min: 10, emoji: '🐺', name: '우두머리' }, { min: 5, emoji: '🐕', name: '개' }, { min: 1, emoji: '🐶', name: '강아지' }] },
     chick: { label: '병아리', stages: [{ min: 10, emoji: '🦅', name: '창공의 왕' }, { min: 5, emoji: '🐔', name: '닭' }, { min: 1, emoji: '🐤', name: '병아리' }] },
+    hamster: { label: '햄스터', stages: [{ min: 10, emoji: '🐹', name: '대장 햄스터' }, { min: 5, emoji: '🐹', name: '통통 햄스터' }, { min: 1, emoji: '🐹', name: '햄스터' }] },
 };
 const MASCOT_KEYS = Object.keys(MASCOTS);
+
+// ==== 마스코트 도트 스프라이트 (16x15, 런타임 SVG) ====
+const BL_INK = '#2e2316';
+const BL_SPRITES = {
+  tiger: { w:16, h:15, pal:{O:'#f2a83c',B:'#6e3f18',C:'#fbf0d5'}, rows:['................','..KK........KK..','.KOCK......KCOK.','.KOOOKKKKKKOOOK.','.KOOOOOBBOOOOOK.','.KOOOOBBBBOOOOK.','.KOOOOOBBOOOOOK.','.KOOOOOOOOOOOOK.','.KOOKKOOOOKKOOK.','.KBOKKOOOOKKOBK.','.KBOOOOOOOOOOBK.','.KOOOOCKKCOOOOK.','.KOOOOCCCCOOOOK.','..KKKKCCCCKKKK..','................'] },
+  cat: { w:16, h:15, pal:{O:'#b0a89c',C:'#f7f2e7',P:'#e99496'}, rows:['................','..KK........KK..','.KOPK......KPOK.','.KOOOKKKKKKOOOK.','.KOOOOOOOOOOOOK.','.KOOOOOOOOOOOOK.','.KOOOOOOOOOOOOK.','.KOOOOOOOOOOOOK.','.KOOKKOOOOKKOOK.','.KOOKKOOOOKKOOK.','.KOOOOOOOOOOOOK.','.KKOOOCPPCOOOKK.','.KOOOOCCCCOOOOK.','..KKKKCCCCKKKK..','................'] },
+  dog: { w:16, h:15, pal:{O:'#d6b280',C:'#f8eed6',D:'#966836'}, rows:['................','..KK........KK..','.KODK......KDOK.','.KOOOKKKKKKOOOK.','.KOOOOOOOOOOOOK.','.KOOOOOOOOOOOOK.','.KOOOOOOOOOOOOK.','.KODDOOOOOOOOOK.','.KODKKOOOOKKOOK.','.KOOKKOOOOKKOOK.','.KOOOOOOOOOOOOK.','.KOOOOCKKCOOOOK.','.KOOOOCCCCOOOOK.','..KKKKCCCCKKKK..','................'] },
+  hamster: { w:16, h:15, pal:{O:'#e9c468',C:'#fbf3dd'}, rows:['................','..KK........KK..','.KOCK......KCOK.','.KOOOKKKKKKOOOK.','.KOOOOOOOOOOOOK.','.KOOOOOOOOOOOOK.','.KOOOOOOOOOOOOK.','.KOOOOOOOOOOOOK.','.KOOKKOOOOKKOOK.','.KOOKKOOOOKKOOK.','.KCCOOOOOOOOCCK.','.KCOOOCKKCOOOCK.','.KOOOOCCCCOOOOK.','..KKKKCCCCKKKK..','................'] },
+  chick: { w:16, h:15, pal:{O:'#f6d442',Y:'#ee882a',P:'#f09e9e'}, rows:['................','................','...KKKKKKKKKK...','..KOOOOOOOOOOK..','.KOOOOOOOOOOOOK.','.KOOOOOOOOOOOOK.','.KOOOOOOOOOOOOK.','.KOOOOOOOOOOOOK.','.KOOKKOOOOKKOOK.','.KPPKKOOOOKKPPK.','.KOOOOOOOOOOOOK.','.KOOOOYYYYOOOOK.','.KOOOOOYYOOOOOK.','..KKKKKKKKKKKK..','................'] },
+};
+const MONO_INK = new Set(['K', 'B', 'D', 'Y', 'P', 'N']);
+function spriteSVG(key, size, mono) {
+    const s = BL_SPRITES[key] || BL_SPRITES.tiger;
+    let rects = '';
+    for (let y = 0; y < s.h; y++) {
+        const row = s.rows[y];
+        let x = 0;
+        while (x < s.w) {
+            const c = row[x];
+            let fill = null;
+            if (c !== '.') {
+                if (mono) fill = MONO_INK.has(c) ? BL_INK : null;
+                else fill = (c === 'K') ? BL_INK : (s.pal[c] || BL_INK);
+            }
+            if (fill === null) { x++; continue; }
+            let run = 1;
+            while (x + run < s.w && row[x + run] === c) run++;
+            rects += `<rect x="${x}" y="${y}" width="${run}" height="1" fill="${fill}"/>`;
+            x += run;
+        }
+    }
+    const h = Math.round(size * s.h / s.w);
+    return `<svg class="bl-sprite" width="${size}" height="${h}" viewBox="0 0 ${s.w} ${s.h}" shape-rendering="crispEdges" xmlns="http://www.w3.org/2000/svg">${rects}</svg>`;
+}
+function mascotSVG(size) { return spriteSVG(EXT.mascot, size, EXT.spriteMono === true); }
 function curMascot() { return MASCOTS[EXT.mascot] || MASCOTS.tiger; }
 function evoStage(lv) { const st = curMascot().stages; for (const e of st) { if (lv >= e.min) return e; } return st[st.length - 1]; }
 
@@ -49,7 +85,7 @@ const AFTER_POOL = ['며칠 뒤, 그 사람은 당신을 꽤 괜찮은 사람으
 function rollAfter() { return Math.random() < 0.18 ? pick(AFTER_POOL) : null; }
 
 // ── 전역 설정 ──
-function defaultExt() { return { connectionProfile: '', autoDetect: false, cooldownTurns: 3, mascot: 'tiger', contextDepth: 'balance', consolePos: null, chainOn: true }; }
+function defaultExt() { return { connectionProfile: '', autoDetect: false, cooldownTurns: 3, mascot: 'tiger', contextDepth: 'balance', consolePos: null, chainOn: true, spriteMono: false }; }
 let EXT = defaultExt();
 function loadExt() {
     const ctx = getCtx();
@@ -369,12 +405,14 @@ function injectBait() {
 function setInjectDefault(v) { STATE.settings.injectDefault = v; saveState(STATE); renderAll(); syncControls(); }
 function setAutoDetect(v) { EXT.autoDetect = v; saveExt(); syncControls(); }
 function setChain(v) { EXT.chainOn = v; saveExt(); syncControls(); }
+function setSpriteMono(v) { EXT.spriteMono = v; saveExt(); renderAll(); syncControls(); }
 function syncControls() {
     if (consoleEl) { const sw = consoleEl.querySelector('.bl-sw'); if (sw) sw.dataset.on = STATE.settings.injectDefault ? 'true' : 'false'; }
     if (fullEl) {
         const fi = fullEl.querySelector('.bl-t-inject'); if (fi) fi.checked = STATE.settings.injectDefault;
         const fa = fullEl.querySelector('.bl-t-auto'); if (fa) fa.checked = EXT.autoDetect;
         const fc = fullEl.querySelector('.bl-t-chain'); if (fc) fc.checked = EXT.chainOn !== false;
+        const fm = fullEl.querySelector('.bl-t-mono'); if (fm) fm.checked = EXT.spriteMono === true;
     }
 }
 function pickMascot(key) { if (MASCOTS[key]) { EXT.mascot = key; saveExt(); renderAll(); } }
@@ -510,7 +548,7 @@ function ensureMounted() {
 function renderConsole() {
     if (!consoleEl) return;
     const evo = evoStage(STATE.level), need = STATE.level * 100;
-    consoleEl.querySelector('.bl-pet-emoji-mini').textContent = evo.emoji;
+    consoleEl.querySelector('.bl-pet-emoji-mini').innerHTML = mascotSVG(30);
     consoleEl.querySelector('.bl-pet-name').textContent = evo.name;
     consoleEl.querySelector('.bl-lv').textContent = 'Lv.' + String(STATE.level).padStart(2, '0');
     consoleEl.querySelector('.bl-st-mood').textContent = pips('😊', STATE.mood);
@@ -563,6 +601,7 @@ function buildFull() {
           <div class="bl-full-toggles">
             <label><span>📤 결과를 챗에 띄우기</span><input type="checkbox" class="bl-t-inject"></label>
             <label><span>🔗 조우 체인 (3단계 전개)</span><input type="checkbox" class="bl-t-chain"></label>
+            <label><span>🎨 마스코트 흑백(도트라인)</span><input type="checkbox" class="bl-t-mono"></label>
             <label><span>📥 자동 감지 (입구)</span><input type="checkbox" class="bl-t-auto"></label>
           </div>
           <div class="bl-cd-row"><span>텀 (주입 간격)</span><input type="number" class="bl-cd-input" min="0" max="20"><span>턴</span></div>
@@ -585,6 +624,7 @@ function buildFull() {
     fullEl.querySelector('.bl-close').addEventListener('click', hideHud);
     fullEl.querySelector('.bl-t-inject').addEventListener('change', e => setInjectDefault(e.target.checked));
     fullEl.querySelector('.bl-t-chain').addEventListener('change', e => setChain(e.target.checked));
+    fullEl.querySelector('.bl-t-mono').addEventListener('change', e => setSpriteMono(e.target.checked));
     fullEl.querySelector('.bl-t-auto').addEventListener('change', e => setAutoDetect(e.target.checked));
     fullEl.querySelector('.bl-cd-input').addEventListener('change', e => { EXT.cooldownTurns = Math.max(0, parseInt(e.target.value, 10) || 0); saveExt(); renderAll(); });
     fullEl.querySelector('.bl-roll2').addEventListener('click', onAppear);
@@ -663,7 +703,7 @@ const DEX_GROUPS = [{ key: 'creature', label: '🐾 생물' }, { key: 'person', 
 function renderFull() {
     if (!fullEl) return;
     const evo = evoStage(STATE.level), need = STATE.level * 100;
-    fullEl.querySelector('.bl-pet-emoji').textContent = evo.emoji;
+    fullEl.querySelector('.bl-pet-emoji').innerHTML = mascotSVG(72);
     fullEl.querySelector('.bl-pet-name').textContent = evo.name;
     fullEl.querySelector('.bl-pet-lvnum').textContent = String(STATE.level).padStart(2, '0');
     fullEl.querySelector('.bl-st-mood').textContent = pips('😊', STATE.mood);
@@ -674,11 +714,12 @@ function renderFull() {
     fullEl.querySelector('.bl-pet-rep').textContent = (STATE.rep > 0 ? '+' : '') + STATE.rep;
     fullEl.querySelector('.bl-pet-items').textContent = STATE.items.length;
     fullEl.querySelector('.bl-pet-title').textContent = STATE.title;
-    fullEl.querySelector('.bl-pet-pick').innerHTML = MASCOT_KEYS.map(k => `<button class="bl-pick-btn${EXT.mascot === k ? ' on' : ''}" data-m="${k}" title="${MASCOTS[k].label}">${MASCOTS[k].stages[MASCOTS[k].stages.length - 1].emoji}</button>`).join('');
+    fullEl.querySelector('.bl-pet-pick').innerHTML = MASCOT_KEYS.map(k => `<button class="bl-pick-btn${EXT.mascot === k ? ' on' : ''}" data-m="${k}" title="${MASCOTS[k].label}">${spriteSVG(k, 26, EXT.spriteMono === true)}</button>`).join('');
     fullEl.querySelector('.bl-sit-v').innerHTML = sitLine();
     fullEl.querySelector('.bl-npc-v').innerHTML = npcLine();
     fullEl.querySelector('.bl-t-inject').checked = STATE.settings.injectDefault;
     fullEl.querySelector('.bl-t-chain').checked = EXT.chainOn !== false;
+    fullEl.querySelector('.bl-t-mono').checked = EXT.spriteMono === true;
     fullEl.querySelector('.bl-t-auto').checked = EXT.autoDetect;
     fullEl.querySelector('.bl-cd-input').value = EXT.cooldownTurns;
 
@@ -715,7 +756,7 @@ function renderFull() {
 function showMini() { if (bubbleEl) bubbleEl.style.display = 'none'; if (consoleEl) consoleEl.style.display = ''; if (fullEl) fullEl.style.display = 'none'; ensureMounted(); applyConsolePos(); renderConsole(); }
 function showFull() { buildFull(); if (bubbleEl) bubbleEl.style.display = 'none'; if (consoleEl) consoleEl.style.display = 'none'; fullEl.style.display = 'flex'; renderFull(); }
 function hideHud() { if (consoleEl) consoleEl.style.display = 'none'; if (fullEl) fullEl.style.display = 'none'; }
-function renderAll() { renderConsole(); if (fullEl) renderFull(); if (bubbleEl) bubbleEl.textContent = evoStage(STATE.level).emoji; }
+function renderAll() { renderConsole(); if (fullEl) renderFull(); if (bubbleEl) bubbleEl.innerHTML = mascotSVG(34); }
 
 let bubbleEl = null;
 function buildBubble() {
@@ -736,7 +777,7 @@ function positionBubble() {
 }
 function collapseToBubble() {
     buildBubble();
-    bubbleEl.textContent = evoStage(STATE.level).emoji;
+    bubbleEl.innerHTML = mascotSVG(34);
     if (consoleEl) consoleEl.style.display = 'none';
     if (fullEl) fullEl.style.display = 'none';
     bubbleEl.style.display = 'flex';
@@ -943,7 +984,7 @@ function showConfirm(title, msg, onYes) {
 function showLoading(msg) {
     closePopup();
     const pop = document.createElement('div'); pop.id = 'beastlog-popup';
-    pop.innerHTML = `<div class="bl-pop-card bl-loading"><div class="bl-load-emoji">${evoStage(STATE.level).emoji}</div><div class="bl-load-msg">${escapeHtml(msg)}</div><div class="bl-load-dots">. . .</div></div>`;
+    pop.innerHTML = `<div class="bl-pop-card bl-loading"><div class="bl-load-emoji">${mascotSVG(48)}</div><div class="bl-load-msg">${escapeHtml(msg)}</div><div class="bl-load-dots">. . .</div></div>`;
     mountPopup(pop);
 }
 function showAlarm(title, msg) {
