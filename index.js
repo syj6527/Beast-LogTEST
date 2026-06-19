@@ -1,7 +1,7 @@
-// 🐯 비스트로그 (Beast Log) v0.26.0 — 알바/돈/상점 경제 v1: {{char}} 맥락맞춤 알바→💰(짜게)→상점서 새 동물 구매. 마스코트 보유제(시작 3종) + 데드팬 알바 후기
+// 🐯 비스트로그 (Beast Log) v0.27.0 — 신규 마스코트 2종(🐰토끼·🐵원숭이) 상점 추가 + eyeBg(크림 얼굴 표정 호환). 병아리 진화아트(부화/닭 벼슬중앙) 시안 확정
 // 버전 3곳 동시 갱신: (1) 이 주석, (2) BEASTLOG_VERSION, (3) manifest.json
 
-const BEASTLOG_VERSION = '0.26.0';
+const BEASTLOG_VERSION = '0.27.0';
 const MODULE = 'beast_log';
 let LAST_ERROR = '';
 try { console.log('[비스트로그] script loaded v' + BEASTLOG_VERSION); } catch (e) { /* noop */ }
@@ -25,6 +25,8 @@ const MASCOTS = {
     dog: { label: '강아지', stages: [{ min: 10, emoji: '🐺', name: '우두머리' }, { min: 5, emoji: '🐕', name: '개' }, { min: 1, emoji: '🐶', name: '강아지' }] },
     chick: { label: '병아리', stages: [{ min: 10, emoji: '🦅', name: '창공의 왕' }, { min: 5, emoji: '🐔', name: '닭' }, { min: 1, emoji: '🐤', name: '병아리' }] },
     hamster: { label: '햄스터', stages: [{ min: 10, emoji: '🐹', name: '대장 햄스터' }, { min: 5, emoji: '🐹', name: '통통 햄스터' }, { min: 1, emoji: '🐹', name: '햄스터' }] },
+    rabbit: { label: '토끼', stages: [{ min: 10, emoji: '🐇', name: '달의 토끼' }, { min: 5, emoji: '🐰', name: '토끼' }, { min: 1, emoji: '🐰', name: '아기 토끼' }] },
+    monkey: { label: '원숭이', stages: [{ min: 10, emoji: '🦍', name: '정글의 왕' }, { min: 5, emoji: '🐒', name: '원숭이' }, { min: 1, emoji: '🐵', name: '아기 원숭이' }] },
 };
 const MASCOT_KEYS = Object.keys(MASCOTS);
 
@@ -36,6 +38,8 @@ const BL_SPRITES = {
   dog: { w:16, h:15, pal:{O:'#d6b280',C:'#f8eed6',D:'#966836'}, rows:['................','..KK........KK..','.KODK......KDOK.','.KOOOKKKKKKOOOK.','.KOOOOOOOOOOOOK.','.KOOOOOOOOOOOOK.','.KOOOOOOOOOOOOK.','.KODDOOOOOOOOOK.','.KODKKOOOOKKOOK.','.KOOKKOOOOKKOOK.','.KOOOOOOOOOOOOK.','.KOOOOCKKCOOOOK.','.KOOOOCCCCOOOOK.','..KKKKCCCCKKKK..','................'] },
   hamster: { w:16, h:15, pal:{O:'#e9c468',C:'#fbf3dd'}, rows:['................','..KK........KK..','.KOCK......KCOK.','.KOOOKKKKKKOOOK.','.KOOOOOOOOOOOOK.','.KOOOOOOOOOOOOK.','.KOOOOOOOOOOOOK.','.KOOOOOOOOOOOOK.','.KOOKKOOOOKKOOK.','.KOOKKOOOOKKOOK.','.KCCOOOOOOOOCCK.','.KCOOOCKKCOOOCK.','.KOOOOCCCCOOOOK.','..KKKKCCCCKKKK..','................'] },
   chick: { w:16, h:15, pal:{O:'#f6d442',Y:'#ee882a',P:'#f09e9e'}, rows:['................','................','...KKKKKKKKKK...','..KOOOOOOOOOOK..','.KOOOOOOOOOOOOK.','.KOOOOOOOOOOOOK.','.KOOOOOOOOOOOOK.','.KOOOOOOOOOOOOK.','.KOOKKOOOOKKOOK.','.KPPKKOOOOKKPPK.','.KOOOOOOOOOOOOK.','.KOOOOYYYYOOOOK.','.KOOOOOYYOOOOOK.','..KKKKKKKKKKKK..','................'] },
+  rabbit: { w:16, h:15, pal:{O:'#f4efe2',P:'#f09e9e',C:'#f7ebce'}, rows:['...KK......KK...','..KPPK....KPPK..','..KPPK....KPPK..','..KPPK....KPPK..','..KPPK....KPPK..','.KKOOKKKKKKOOKK.','.KOOOOOOOOOOOOK.','.KOOOOOOOOOOOOK.','.KOOKKOOOOKKOOK.','.KOOKKOOOOKKOOK.','.KOOOOOOOOOOOOK.','.KPOOOOKKOOOOPK.','.KOOOOOOOOOOOOK.','..KKKKKKKKKKKK..','................'] },
+  monkey: { w:16, h:15, eyeBg:'C', pal:{O:'#a87848',C:'#f7ebce'}, rows:['................','...KKKKKKKKKK...','..KOOOOOOOOOOK..','.KOOOOOOOOOOOOK.','.KOOOOOOOOOOOOK.','KKOOCCCCCCCCOOKK','KOKOCCCCCCCCOKOK','KKOCCCCCCCCCCOKK','.KOCKKCCCCKKCOK.','.KOCKKCCCCKKCOK.','.KOCCCCCCCCCCOK.','.KOCCCKKKKCCCOK.','.KOOCCCCCCCCOOK.','..KKOOOOOOOOKK..','...KKKKKKKKKK...'] },
 };
 const MONO_INK = new Set(['K', 'B', 'D', 'Y', 'P', 'N']);
 // 표정: 눈 자리(2x2 기본)를 지우고 표정별 픽셀로 다시 그림
@@ -65,7 +69,7 @@ function spriteSVG(key, size, mono, expr) {
         grid.push(line);
     }
     if (expr && expr !== 'open' && EYE_EXPR[expr]) {
-        const body = mono ? null : (s.pal.O || BL_INK);
+        const body = mono ? null : (s.pal[s.eyeBg || 'O'] || s.pal.O || BL_INK);
         for (const [x, y] of EYE_BASE) grid[y][x] = body;          // 눈 지움(몸색)
         for (const [x, y] of EYE_EXPR[expr]) grid[y][x] = BL_INK;  // 표정 그림
     }
@@ -132,7 +136,7 @@ function relTier(aff) { return relTierObj(aff).label; }
 function affinityDelta(kind) { return ({ help: 2, cooperate: 3, activity: 1, interact: 0, loot: 0, flee: 0, attack: -2 })[kind] || 0; }
 
 // ── 알바 / 돈 / 상점 ──
-const MASCOT_PRICE = { tiger: 0, cat: 0, dog: 0, hamster: 380000, chick: 520000 };
+const MASCOT_PRICE = { tiger: 0, cat: 0, dog: 0, hamster: 380000, chick: 520000, rabbit: 660000, monkey: 840000 };
 const JOB_LOAD = ['알바 뛰는 중…', '시급 계산 중…', '사장님 눈치 보는 중…', '진상 응대 중…', '허드렛일 처리 중…'];
 function ownsMascot(k) { return (STATE.owned || []).includes(k); }
 function fmtMoney(n) { return (n || 0).toLocaleString('ko-KR') + '원'; }
