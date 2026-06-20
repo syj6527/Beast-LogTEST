@@ -356,13 +356,21 @@ function fmtMoney(n) { return (n || 0).toLocaleString('ko-KR') + '원'; }
 function jobRemaining() { const cd = (STATE.jobCD == null ? 3 : STATE.jobCD); return Math.max(0, cd - (getChatLen() - (STATE.lastJobTurn == null ? -99 : STATE.lastJobTurn))); }
 function canWork() { return jobRemaining() <= 0; }
 function buildJobPrompt() {
-    return `너는 RP 주인공({{char}})이 잠깐 뛴 "알바"와 그 결과를 만든다.
+    const members = groupMemberNames();
+    const whoLine = members.length > 1
+        ? `이 채팅엔 여러 캐릭터(${members.join(', ')})가 있다. 그 중 상황상 가장 어울리는 캐릭터 한 명이 알바를 뛰고 왔다. 그 한 명을 골라 그의 시점·성격으로 써라.`
+        : `이 RP에 등장하는 캐릭터 중 한 명이 직접 알바를 뛰고 왔다. (대화 맥락에 여러 명이 나오면 — 한 카드에 여러 인물이 설정돼 있든, 여럿이 등장하든 — 그 중 지금 상황에 가장 어울리는 한 명을 골라라. 한 명만 있으면 그 캐릭터다.)`;
+    return `RP 속 캐릭터가 잠깐 "알바"를 뛰고 온 상황이다. 그 알바와 결과를 만든다. (유저나 펫이 아니라, RP 캐릭터가 일한 것)
+${whoLine}
 ${getScene()}규칙:
-- {{char}}의 세계/처지에 맞는 알바를 골라라. 판타지면 용병·약초 채집·여관 설거지, 현대면 편의점·전단지, SF면 화물 하역 등. 장면에서 끌어내라. 세계관에 안 맞는 알바 금지(판타지에 편의점 X).
+- 그 캐릭터의 세계/처지/성격에 맞는 알바를 골라라. 판타지면 용병·약초 채집·여관 설거지, 현대면 편의점·전단지, SF면 화물 하역 등. 장면에서 끌어내라. 세계관에 안 맞는 알바 금지(판타지에 편의점 X).
+- **그 캐릭터의 성격이 후기(report)와 소감(mood)에 묻어나게 하라.** 무뚝뚝하면 무뚝뚝하게, 거만하면 투덜대며, 성실하면 묵묵하게.
+- report와 mood는 **그 캐릭터 본인이 직접 겪고 말하는 시점**으로 써라. 그 캐릭터를 제3자처럼 부르거나(예: "○○에게 빌려라"), 유저/펫이 시킨 것처럼 쓰지 마라. 어디까지나 그 캐릭터가 스스로 다녀온 알바다.
+- **who에는 실제로 알바를 뛴 그 캐릭터의 이름을 정확히 적어라** (대화에 나온 이름 그대로).
 - 데드팬 코미디. 짧은 알바 후기 한 편.
 - 보수는 짜다(현실 알바처럼 적게). 단위는 정수 '원' 환산값으로 pay에 넣어라(대략 20000~90000, 사건 나면 더 적거나 0).
 - 가끔(30%) 사건/사고(incident)로 보수가 깎이거나 황당한 일.
-형식(JSON만, 코드펜스 금지): {"job":"알바 이름/장소","report":"2~3문장 데드팬 후기","pay":정수,"incident":"한 줄 사건 또는 null","mood":"{{char}}의 한 줄 소감"}
+형식(JSON만, 코드펜스 금지): {"who":"알바 뛴 캐릭터 이름","job":"알바 이름/장소","report":"그 캐릭터가 일하고 온 2~3문장 데드팬 후기","pay":정수,"incident":"한 줄 사건 또는 null","mood":"그 캐릭터의 한 줄 소감"}
 [대화 맥락]
 ${getConvo()}`;
 }
@@ -405,6 +413,7 @@ function normalizeJob(o) {
     let pay = parseInt(o.pay, 10); if (!Number.isFinite(pay)) pay = 30000;
     pay = Math.max(0, Math.min(200000, pay));
     return {
+        who: (o.who && o.who !== 'null') ? String(o.who).slice(0, 24) : '',
         job: String(o.job || '이름 모를 알바').slice(0, 40),
         report: String(o.report || '시간만 흘렀다.').slice(0, 400),
         pay,
@@ -415,7 +424,7 @@ function normalizeJob(o) {
 let _blBusy = false;
 async function onWork() {
     if (_blBusy) return;
-    if (!canWork()) { flash(`아직 지쳤다 — ${jobRemaining()}턴 쉬어야`); return; }
+    if (!canWork()) { flash(`아직 일하고 온 지 얼마 안 됐어요 — ${jobRemaining()}턴 뒤에`); return; }
     _blBusy = true;
     showLoading(pick(JOB_LOAD));
     try {
@@ -624,10 +633,12 @@ function shopListHtml() {
 }
 function showJobResult(job) {
     closePopup();
+    const ctx = getCtx();
+    const charName = (job.who && job.who.trim()) ? job.who.trim() : ((ctx && ctx.name2) ? ctx.name2 : '');
     const pop = document.createElement('div'); pop.id = 'beastlog-popup';
     pop.innerHTML = `
       <div class="bl-pop-card bl-cat-npc">
-        <div class="bl-pop-badge">🛠️ 알바 후기</div>
+        <div class="bl-pop-badge">🛠️ ${charName ? escapeHtml(charName) + '의 ' : ''}알바 후기</div>
         <div class="bl-pop-title">${escapeHtml(job.job)}</div>
         <div class="bl-job-report">${escapeHtml(job.report)}</div>
         ${job.incident ? `<div class="bl-af-rare">⚠️ ${escapeHtml(job.incident)}</div>` : ''}
@@ -872,12 +883,35 @@ async function llmGenerate(prompt, maxTokens) {
     }
     throw { code: 'nogen' };
 }
+// 그룹챗이면 멤버 캐릭터 이름들, 1:1이면 [name2] 하나. 빈 배열 가능.
+function groupMemberNames() {
+    const ctx = getCtx(); if (!ctx) return [];
+    try {
+        if (ctx.groupId && Array.isArray(ctx.groups) && Array.isArray(ctx.characters)) {
+            const g = ctx.groups.find(x => x.id == ctx.groupId);
+            if (g && Array.isArray(g.members) && g.members.length) {
+                const names = g.members.map(av => {
+                    const c = ctx.characters.find(ch => ch.avatar === av);
+                    return c ? c.name : null;
+                }).filter(Boolean);
+                if (names.length) return names;
+            }
+        }
+    } catch (e) { /* noop */ }
+    return ctx.name2 ? [ctx.name2] : [];
+}
 function getScene() {
     const ctx = getCtx(); if (!ctx) return '';
     const sub = s => stripTags(String(s || '')).replace(/\{\{user\}\}/gi, ctx.name1 || '유저').replace(/\{\{char\}\}/gi, ctx.name2 || '상대');
     const bits = [];
     try {
-        if (ctx.name2) bits.push(`상대 캐릭터: ${ctx.name2}`);
+        // 그룹챗이면 멤버 전원, 1:1이면 단일 캐릭터
+        const members = groupMemberNames();
+        if (members.length > 1) {
+            bits.push(`등장 캐릭터(그룹): ${members.join(', ')}`);
+        } else if (ctx.name2) {
+            bits.push(`상대 캐릭터: ${ctx.name2}`);
+        }
         const char = ctx.characters && ctx.characters[ctx.characterId];
         if (char) {
             const d = char.data || {};
@@ -1414,7 +1448,10 @@ function buildFull() {
         <div class="bl-full-body">
           <div class="bl-tab-panel" data-panel="main">
           <div class="bl-pet-card">
-            <div class="bl-pet-top"><span class="bl-pet-name"></span><button class="bl-rename-btn" title="이름 짓기 (작명소)">✏️</button><span class="bl-pet-stage"></span><span class="bl-pet-lv">Lv.<b class="num bl-pet-lvnum"></b></span></div>
+            <div class="bl-pet-namebox">
+              <div class="bl-pet-top"><span class="bl-pet-name"></span><button class="bl-rename-btn" title="이름 짓기 (작명소)">✏️</button><span class="bl-pet-lv">Lv.<b class="num bl-pet-lvnum"></b></span></div>
+              <div class="bl-pet-stage"></div>
+            </div>
             <div class="bl-pet"><span class="bl-pet-emoji"></span></div>
             <div class="bl-status">
               <span class="bl-st">😊 기분 <b class="bl-st-mood"></b></span>
@@ -1454,7 +1491,7 @@ function buildFull() {
                 <div class="bl-acc-head"><h3>🛠️ 알바 내역</h3><span class="bl-rule"></span><span class="bl-job-cnt num"></span><button class="bl-clear-btn bl-jobs-clear" title="전체 비우기">🧹</button><span class="bl-chev">▾</span></div>
                 <div class="bl-acc-body"><div class="bl-jobs-list"></div></div>
               </div>
-              <div class="bl-work-tip">RP 주인공이 세계관에 맞는 알바를 뜀. 보수는 짜다. 가끔 사건 터짐. (알바하면 살짝 배고파짐)</div>
+              <div class="bl-work-tip">RP 캐릭터가 직접 세계관에 맞는 알바를 뛰고 와요. 성격이 후기에 묻어남. 보수는 짜고 가끔 사건도 터져요. (알바하면 살짝 배고파짐)</div>
             </div>
           </div>
           <div class="bl-tab-panel" data-panel="quest" hidden>
@@ -1654,7 +1691,7 @@ function renderFull() {
     const evo = evoStage(STATE.level), need = levelNeed(STATE.level);
     fullEl.querySelector('.bl-pet-emoji').innerHTML = mascotSVG(72);
     fullEl.querySelector('.bl-pet-name').textContent = petDisplayName();
-    { const sub = fullEl.querySelector('.bl-pet-stage'); if (sub) sub.textContent = (STATE.petName && STATE.petName.trim()) ? evo.name : ''; }
+    { const sub = fullEl.querySelector('.bl-pet-stage'); if (sub) sub.textContent = (STATE.petName && STATE.petName.trim()) ? evo.name : curMascot().label; }
     fullEl.querySelector('.bl-pet-lvnum').textContent = String(STATE.level).padStart(2, '0');
     fullEl.querySelector('.bl-st-mood').textContent = clamp0100(STATE.mood) + '%';
     fullEl.querySelector('.bl-st-hunger').textContent = clamp0100(STATE.hunger) + '%';

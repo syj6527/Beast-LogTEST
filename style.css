@@ -259,8 +259,9 @@
 
 /* 펫 카드 (마스코트 둥둥) */
 .bl-pet-card { background: var(--bl-card2); border: 2px solid var(--bl-line); border-radius: 12px; padding: 12px; text-align: center; }
+.bl-pet-namebox { display: flex; flex-direction: column; align-items: center; gap: 2px; }
 .bl-pet-top { display: flex; align-items: center; justify-content: center; gap: 6px; flex-wrap: wrap; }
-.bl-pet-name { font-family: var(--bl-chrome); font-size: 11px; color: var(--bl-ink); }
+.bl-pet-name { font-family: var(--bl-chrome); font-size: 12px; color: var(--bl-ink); font-weight: 700; }
 .bl-rename-btn { font-size: 11px; padding: 1px 5px; border: 1.5px solid var(--bl-line); border-radius: 6px; background: var(--bl-card2); cursor: pointer; line-height: 1.4; opacity: .75; }
 .bl-rename-btn:hover { opacity: 1; }
 .bl-pet-stage { font-family: var(--bl-chrome); font-size: 9px; color: var(--bl-ink-soft); }
