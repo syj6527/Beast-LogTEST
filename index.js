@@ -1,7 +1,7 @@
-// 🐯 비스트로그 (Beast Log) v0.44.1-beta — 닭 3단계 이름 '닭'→'새벽의 지배자'(고양이 밤의 지배자와 대구). 캐릭터 1차 정리 완료
+// 🐯 비스트로그 (Beast Log) v0.46.0-beta — 7종 진화 배색 재설계: 1단계=아기(연한 색)/2단계=성체(진한 색) 점프를 키워 단계 구분 명확화. 호랑이·강아지·원숭이 베이스 연하게, 6종 2단계 진하게, 햄스터 3단계 미세조정
 // 버전 3곳 동시 갱신: (1) 이 주석, (2) BEASTLOG_VERSION, (3) manifest.json
 
-const BEASTLOG_VERSION = '0.44.1';
+const BEASTLOG_VERSION = '0.46.0';
 const MODULE = 'beast_log';
 let LAST_ERROR = '';
 const DBG_LOG = [];
@@ -32,22 +32,22 @@ const MASCOTS = {
     cat: { label: '고양이', stages: [{ min: 10, emoji: '🐈‍⬛', name: '밤의 지배자' }, { min: 5, emoji: '🐈', name: '고양이' }, { min: 1, emoji: '🐱', name: '새끼 고양이' }] },
     dog: { label: '강아지', stages: [{ min: 10, emoji: '🐺', name: '우두머리' }, { min: 5, emoji: '🐕', name: '개' }, { min: 1, emoji: '🐶', name: '강아지' }] },
     chick: { label: '병아리', stages: [{ min: 10, emoji: '🐔', name: '새벽의 지배자' }, { min: 5, emoji: '🐤', name: '병아리' }, { min: 1, emoji: '🐣', name: '알병아리' }] },
-    hamster: { label: '햄스터', stages: [{ min: 10, emoji: '🐹', name: '대장 햄스터' }, { min: 5, emoji: '🐹', name: '통통 햄스터' }, { min: 1, emoji: '🐹', name: '햄스터' }] },
+    hamster: { label: '햄스터', stages: [{ min: 10, emoji: '🧐', name: '현자 햄스터' }, { min: 5, emoji: '🐹', name: '통통 햄스터' }, { min: 1, emoji: '🐹', name: '햄스터' }] },
     rabbit: { label: '토끼', stages: [{ min: 10, emoji: '🐇', name: '달의 토끼' }, { min: 5, emoji: '🐰', name: '토끼' }, { min: 1, emoji: '🐰', name: '아기 토끼' }] },
-    monkey: { label: '원숭이', stages: [{ min: 10, emoji: '🦍', name: '정글의 왕' }, { min: 5, emoji: '🐒', name: '원숭이' }, { min: 1, emoji: '🐵', name: '아기 원숭이' }] },
+    monkey: { label: '원숭이', stages: [{ min: 10, emoji: '🐒', name: '손오공' }, { min: 5, emoji: '🐒', name: '원숭이' }, { min: 1, emoji: '🐵', name: '아기 원숭이' }] },
 };
 const MASCOT_KEYS = Object.keys(MASCOTS);
 
 // ==== 마스코트 도트 스프라이트 (16x15, 런타임 SVG) ====
 const BL_INK = '#2e2316';
 const BL_SPRITES = {
-  tiger: { w:16, h:15, pal:{O:'#f2a83c',B:'#6e3f18',C:'#fbf0d5'}, rows:['................','..KK........KK..','.KOCK......KCOK.','.KOOOKKKKKKOOOK.','.KOOOOOBBOOOOOK.','.KOOOOBBBBOOOOK.','.KOOOOOBBOOOOOK.','.KOOOOOOOOOOOOK.','.KOOKKOOOOKKOOK.','.KBOKKOOOOKKOBK.','.KBOOOOOOOOOOBK.','.KOOOOCKKCOOOOK.','.KOOOOCCCCOOOOK.','..KKKKCCCCKKKK..','................'] },
+  tiger: { w:16, h:15, pal:{O:'#f7b85a',B:'#8f5e30',C:'#fdf3dd'}, rows:['................','..KK........KK..','.KOCK......KCOK.','.KOOOKKKKKKOOOK.','.KOOOOOBBOOOOOK.','.KOOOOBBBBOOOOK.','.KOOOOOBBOOOOOK.','.KOOOOOOOOOOOOK.','.KOOKKOOOOKKOOK.','.KBOKKOOOOKKOBK.','.KBOOOOOOOOOOBK.','.KOOOOCKKCOOOOK.','.KOOOOCCCCOOOOK.','..KKKKCCCCKKKK..','................'] },
   cat: { w:16, h:15, pal:{O:'#b0a89c',C:'#f7f2e7',P:'#e99496'}, rows:['................','..KK........KK..','.KOPK......KPOK.','.KOOOKKKKKKOOOK.','.KOOOOOOOOOOOOK.','.KOOOOOOOOOOOOK.','.KOOOOOOOOOOOOK.','.KOOOOOOOOOOOOK.','.KOOKKOOOOKKOOK.','.KOOKKOOOOKKOOK.','.KOOOOOOOOOOOOK.','.KKOOOCPPCOOOKK.','.KOOOOCCCCOOOOK.','..KKKKCCCCKKKK..','................'] },
-  dog: { w:16, h:15, pal:{O:'#d6b280',C:'#f8eed6',D:'#966836'}, rows:['................','..KK........KK..','.KODK......KDOK.','.KOOOKKKKKKOOOK.','.KOOOOOOOOOOOOK.','.KOOOOOOOOOOOOK.','.KOOOOOOOOOOOOK.','.KODDOOOOOOOOOK.','.KODKKOOOOKKOOK.','.KOOKKOOOOKKOOK.','.KOOOOOOOOOOOOK.','.KOOOOCKKCOOOOK.','.KOOOOCCCCOOOOK.','..KKKKCCCCKKKK..','................'] },
+  dog: { w:16, h:15, pal:{O:'#e6cda2',C:'#f8eed6',D:'#a87a44'}, rows:['................','..KK........KK..','.KODK......KDOK.','.KOOOKKKKKKOOOK.','.KOOOOOOOOOOOOK.','.KOOOOOOOOOOOOK.','.KOOOOOOOOOOOOK.','.KODDOOOOOOOOOK.','.KODKKOOOOKKOOK.','.KOOKKOOOOKKOOK.','.KOOOOOOOOOOOOK.','.KOOOOCKKCOOOOK.','.KOOOOCCCCOOOOK.','..KKKKCCCCKKKK..','................'] },
   hamster: { w:16, h:15, pal:{O:'#e9c468',C:'#fbf3dd',P:'#f2b0a2'}, rows:['................','..KK........KK..','.KOCK......KCOK.','.KOOOKKKKKKOOOK.','.KOOOOOOOOOOOOK.','.KOOOOOOOOOOOOK.','.KOOOOOOOOOOOOK.','.KOOOOOOOOOOOOK.','KOOOKKOOOOKKOOOK','KOPOKKOOOOKKOPOK','KOPPOOOOOOOOPPOK','.KCOOOCKKCOOOCK.','.KOOOOCCCCOOOOK.','..KKKKCCCCKKKK..','................'] },
   chick: { w:16, h:15, noExpr:true, pal:{O:'#f6d442',Y:'#ee882a',E:'#fbf3e0',e:'#e6d8b8'}, rows:['................','......KKKK......','....KKOOOOKK....','...KOOOOOOOOK...','..KOOKKOOKKOOK..','..KOOKKOOKKOOK..','..KOOOOYYOOOOK..','..KOOOOOOOOOOK..','.KEKEKKEEKKEKEK.','.KEEEEEEEEEEEEK.','.KEEEEEEEEEEEEK.','.KEEEeeeeeeEEEK.','..KEEEEEEEEEEK..','...KKEEEEEEKK...','.....KKKKKK.....'] },
   rabbit: { w:16, h:15, pal:{O:'#fbfbf7',P:'#f3a6a6'}, rows:['..KKK......KKK..','.KOPK......KPOK.','.KOPK......KPOK.','.KOPK......KPOK.','.KOOK......KOOK.','.KOOKKKKKKKKOOK.','.KOOOOOOOOOOOOK.','.KOOOOOOOOOOOOK.','.KOOKKOOOOKKOOK.','.KOOKKOOOOKKOOK.','.KOOOOOOOOOOOOK.','.KPOOOOKKOOOOPK.','.KOOOOOOOOOOOOK.','..KKKKKKKKKKKK..','................'] },
-  monkey: { w:16, h:15, eyeBg:'C', pal:{O:'#aa7a4a',C:'#f7ebce'}, rows:['................','...KKKKKKKKKK...','..KOOOOOOOOOOK..','.KOOOOOOOOOOOOK.','.KOOOOOOOOOOOOK.','KKOOCCCCCCCCOOKK','KOKOCCCCCCCCOKOK','KKOCCCCCCCCCCOKK','.KOCKKCCCCKKCOK.','.KOCKKCCCCKKCOK.','.KOCCCCCCCCCCOK.','.KOCCCKKKKCCCOK.','.KOOCCCCCCCCOOK.','..KKOOOOOOOOKK..','...KKKKKKKKKK...'] },
+  monkey: { w:16, h:15, eyeBg:'C', pal:{O:'#c49c6e',C:'#f7ebce'}, rows:['................','...KKKKKKKKKK...','..KOOOOOOOOOOK..','.KOOOOOOOOOOOOK.','.KOOOOOOOOOOOOK.','KKOOCCCCCCCCOOKK','KOKOCCCCCCCCOKOK','KKOCCCCCCCCCCOKK','.KOCKKCCCCKKCOK.','.KOCKKCCCCKKCOK.','.KOCCCCCCCCCCOK.','.KOCCCKKKKCCCOK.','.KOOCCCCCCCCOOK.','..KKOOOOOOOOKK..','...KKKKKKKKKK...'] },
 };
 const MONO_INK = new Set(['K', 'B', 'D', 'Y', 'P', 'N']);
 // 표정: 눈 자리(2x2 기본)를 지우고 표정별 픽셀로 다시 그림
@@ -66,17 +66,18 @@ const EYE_EXPR = {
 const SPR_CHICK2 = { w: 16, h: 15, pal: { O: '#f6d442', Y: '#ee882a', P: '#f09e9e' }, rows: ['................', '................', '...KKKKKKKKKK...', '..KOOOOOOOOOOK..', '.KOOOOOOOOOOOOK.', '.KOOOOOOOOOOOOK.', '.KOOOOOOOOOOOOK.', '.KOOOOOOOOOOOOK.', '.KOOKKOOOOKKOOK.', '.KPPKKOOOOKKPPK.', '.KOOOOOOOOOOOOK.', '.KOOOOYYYYOOOOK.', '.KOOOOOYYOOOOOK.', '..KKKKKKKKKKKK..', '................'] };            // 2단계: 병아리
 const SPR_CHICK3 = { w: 16, h: 15, pal: { O: '#fdfaf0', R: '#e2483a', Y: '#ee882a' }, rows: ['.....RR.RR......', '....RRRRRRR.....', '...KKKKKKKKKK...', '..KOOOOOOOOOOK..', '.KOOOOOOOOOOOOK.', '.KOOOOOOOOOOOOK.', '.KOOOOOOOOOOOOK.', '.KOOOOOOOOOOOOK.', '.KOOKKOOOOKKOOK.', '.KOOKKOOOOKKOOK.', '.KOOOOOOOOOOOOK.', '.KOOOOYYYYOOOOK.', '.KOOOOOYYOOOOOK.', '..KKKKKKKKKKKK..', '................'] };  // 3단계: 닭(흰 얼굴+빨간 볏)
 const EVO_VIS = {
-    tiger:   { 2: { pal: { O: '#ef9a1d' } }, 3: { pal: { O: '#f7c948', B: '#7a4a12' }, crown: '#ffd84d', expr: 'regal' } },
-    cat:     { 2: { pal: { O: '#8d93a0' } }, 3: { pal: { O: '#3a3f50', C: '#2a2e3c' }, eyeColor: '#74e3c4' } },
-    dog:     { 2: { pal: { O: '#c2a378' } }, 3: { pal: { O: '#9aa0aa', D: '#4a4e57', C: '#dde1e7' }, expr: 'fierce' } },
-    hamster: { 2: { pal: { O: '#d8a83f' } }, 3: { pal: { O: '#f0bc3a', C: '#fff3d0' }, expr: 'regal' } },          // 황금 탐욕의 군주
+    tiger:   { 2: { pal: { O: '#df7d1c', B: '#5c3412' } }, 3: { pal: { O: '#f7c948', B: '#7a4a12' }, crown: '#ffd84d', expr: 'regal' } },
+    cat:     { 2: { pal: { O: '#7c8390', C: '#e8e4dc' } }, 3: { pal: { O: '#3a3f50', C: '#2a2e3c' }, eyeColor: '#74e3c4' } },
+    dog:     { 2: { pal: { O: '#a8702f', D: '#5e3c18' } }, 3: { pal: { O: '#9aa0aa', D: '#4a4e57', C: '#dde1e7' }, expr: 'fierce' } },
+    hamster: { 2: { pal: { O: '#d7c193' } }, 3: { pal: { O: '#dcd2bb', C: '#fbf6e8' }, monocle: '#c79a3e' } },     // 현자 햄스터(연한 색+단안경)
     chick:   { 2: { sprite: SPR_CHICK2 }, 3: { sprite: SPR_CHICK3, expr: 'fierce' } },                              // 알병아리→병아리→닭 (형태 변신)
-    rabbit:  { 2: { pal: { O: '#e7e7f0' } }, 3: { pal: { O: '#cdd2ea', P: '#c9b6e0' }, eyeColor: '#ffe79c' } },      // 월광 토끼
-    monkey:  { 2: { pal: { O: '#9a6a3a' } }, 3: { pal: { O: '#e0a531', C: '#fff4d6' }, band: '#f0c84a', expr: 'fierce' } }, // 원숭이 왕(손오공)
+    rabbit:  { 2: { pal: { O: '#dfd2bb', P: '#e6a8aa' } }, 3: { pal: { O: '#cdd2ea', P: '#c9b6e0' }, eyeColor: '#ffe79c' } },      // 월광 토끼
+    monkey:  { 2: { pal: { O: '#86562c', C: '#e6d2a4' } }, 3: { pal: { O: '#e0a531', C: '#fff4d6' }, band: '#f0c84a', expr: 'fierce' } }, // 원숭이 왕(손오공)
 };
 const EVO_CROWN = [[5, 1], [6, 1], [7, 1], [8, 1], [9, 1], [5, 0], [7, 0], [9, 0]];      // 왕관: 띠5 + 뿔3
 const EVO_COMB = [[6, 1], [7, 1], [8, 1], [9, 1], [6, 0], [8, 0]];                       // 닭 볏
 const EVO_BAND = [[4, 6], [5, 6], [6, 6], [7, 6], [8, 6], [9, 6], [10, 6], [11, 6], [7, 5], [8, 5]]; // 머리띠 + 가운데 보석
+const EVO_MONOCLE = [[10, 7], [11, 7], [9, 8], [12, 8], [9, 9], [12, 9], [10, 10], [11, 10], [13, 11], [13, 12]]; // 단안경 링(오른눈) + 체인
 function evoTier(lv) { return lv >= 10 ? 3 : (lv >= 5 ? 2 : 1); }
 function spriteSVG(key, size, mono, expr, tier) {
     let s = BL_SPRITES[key] || BL_SPRITES.tiger;
@@ -113,6 +114,7 @@ function spriteSVG(key, size, mono, expr, tier) {
     if (vis && vis.crown) for (const [x, y] of EVO_CROWN) grid[y][x] = vis.crown;  // 왕관(호랑이)
     if (vis && vis.comb) for (const [x, y] of EVO_COMB) grid[y][x] = vis.comb;     // 볏(병아리→닭)
     if (vis && vis.band) for (const [x, y] of EVO_BAND) grid[y][x] = vis.band;     // 머리띠(원숭이왕)
+    if (vis && vis.monocle) for (const [x, y] of EVO_MONOCLE) grid[y][x] = vis.monocle; // 단안경(현자 햄스터)
     let rects = '';
     for (let y = 0; y < s.h; y++) {
         let x = 0;
