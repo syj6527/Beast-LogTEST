@@ -82,12 +82,15 @@
 .bl-mini-status { background: var(--bl-card); border: 2px solid var(--bl-line); border-radius: 9px; padding: 8px 9px; }
 .bl-ms-row { display: flex; align-items: center; gap: 7px; margin-bottom: 6px; }
 .bl-sprite { display: block; }
+@keyframes bl-sleep-breathe { 0%, 100% { transform: translateY(0) scale(1); } 50% { transform: translateY(0.5px) scale(0.985); } }
+.bl-sprite.bl-sleeping { animation: bl-sleep-breathe 2.8s ease-in-out infinite; transform-origin: center bottom; }
 .bl-pet-emoji-mini { cursor: pointer; line-height: 0; flex-shrink: 0; animation: bl-bob 2.4s ease-in-out infinite; }
 .bl-pet-emoji-mini:active { transform: scale(.9); }
 .bl-ms-id { display: flex; flex-direction: column; line-height: 1.25; min-width: 0; }
 .bl-ms-id .bl-pet-name { font-family: var(--bl-chrome); font-size: 10px; color: var(--bl-ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .bl-ms-id .bl-lv { font-family: var(--bl-chrome); font-size: 11px; color: var(--bl-point-d); }
-.bl-mini-status .bl-status { display: flex; flex-wrap: wrap; gap: 5px; font-size: 12px; letter-spacing: -1px; margin-bottom: 6px; }
+.bl-mini-status .bl-status { display: flex; flex-wrap: wrap; gap: 8px; font-size: 11px; letter-spacing: 0; margin-bottom: 6px; font-family: var(--bl-chrome); }
+.bl-mini-status .bl-status > span { white-space: nowrap; }
 .bl-ms-rep { font-size: 11px; color: var(--bl-ink-soft); margin-top: 6px; }
 .bl-ms-rep b { color: var(--bl-ink); }
 .bl-xmini { height: 5px; background: var(--bl-line); border-radius: 3px; overflow: hidden; }
@@ -209,6 +212,7 @@
 .bl-note-body { font-family: var(--bl-prose); font-size: 12px; line-height: 1.55; color: var(--bl-ink); text-align: center; margin: 4px 0 12px; white-space: pre-line; }
 .bl-note-body.secret { color: #8A5AA8; }
 .bl-q-reward.gift { color: #6B8E4E; }
+.bl-q-reward.xp { color: #C99A2E; }
 .bl-job-row { position: relative; background: var(--bl-card); border: 2px solid var(--bl-line); border-radius: 9px; padding: 9px 10px; margin-bottom: 7px; }
 .bl-job-rmain { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; padding-right: 22px; }
 .bl-job-rttl { font-family: var(--bl-chrome); font-size: 10.5px; color: var(--bl-point-d); }
@@ -249,8 +253,8 @@
 .bl-pet-lv { font-family: var(--bl-chrome); font-size: 11px; color: var(--bl-point-d); }
 .bl-pet { margin: 6px 0; }
 .bl-pet-emoji { display: inline-block; line-height: 0; animation: bl-bob 2.2s ease-in-out infinite; }
-.bl-pet-card .bl-status { display: flex; justify-content: center; gap: 12px; font-family: var(--bl-chrome); font-size: 10px; color: var(--bl-ink-soft); margin: 4px 0 8px; flex-wrap: wrap; }
-.bl-pet-card .bl-status b { color: var(--bl-ink); letter-spacing: -1px; }
+.bl-pet-card .bl-status { display: flex; justify-content: center; gap: 14px; font-family: var(--bl-chrome); font-size: 10px; color: var(--bl-ink-soft); margin: 4px 0 8px; flex-wrap: wrap; }
+.bl-pet-card .bl-status b { color: var(--bl-ink); letter-spacing: 0; }
 .bl-pet-xptext { font-size: 9px; color: var(--bl-ink-soft); margin-bottom: 3px; }
 .bl-pet-xpbar { height: 8px; background: var(--bl-line); border-radius: 4px; overflow: hidden; }
 .bl-pet-xpbar i { display: block; height: 100%; width: 0; background: var(--bl-point-d); border-radius: 4px; transition: width .4s; }
@@ -330,8 +334,8 @@
 .bl-dex-emoji { font-size: 16px; }
 .bl-dex-nm { flex: 1; min-width: 0; font-size: 11px; color: var(--bl-ink); word-break: keep-all; overflow-wrap: anywhere; }
 .bl-terjut { font-family: var(--bl-chrome); font-size: 8px; color: #fff; background: var(--bl-point-d); padding: 1px 5px; border-radius: 5px; }
-.bl-dex-rel { font-family: var(--bl-chrome); font-size: 9px; color: var(--bl-point-d); }
-.bl-tone-warm { color: #C2702A; }
+.bl-dex-rel { font-family: var(--bl-chrome); font-size: 10.5px; font-weight: 700; color: var(--bl-point-d); background: var(--bl-card2); border: 1.5px solid var(--bl-line); border-radius: 7px; padding: 2px 7px; letter-spacing: 0; }
+.bl-tone-warm { color: #C2702A; border-color: #E0B88A; }
 .bl-tone-mid { color: var(--bl-ink-soft); }
 .bl-tone-cold { color: #8A8A98; }
 .bl-dex-tags { display: flex; flex-wrap: wrap; gap: 4px; margin: 5px 0; }

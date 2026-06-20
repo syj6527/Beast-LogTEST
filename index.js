@@ -1,7 +1,7 @@
-// 🐯 비스트로그 (Beast Log) v0.46.0-beta — 7종 진화 배색 재설계: 1단계=아기(연한 색)/2단계=성체(진한 색) 점프를 키워 단계 구분 명확화. 호랑이·강아지·원숭이 베이스 연하게, 6종 2단계 진하게, 햄스터 3단계 미세조정
+// 🐯 비스트로그 (Beast Log) v0.48.0 — 다마고치 강화: 상태 0~100%(기분·배고픔·체력)로 통일+표시, 배고픔 2시간당 -10% 자동감소(채팅 중), 바닥 시 기분·체력 연쇄+레벨다운(진화해제, 죽음X). 표정: 슬픔→눈물(ㅠㅠ), 자는 표정(zzz) 추가(유휴+상태양호 시 랜덤, 건드리면 깨움). 밥: 60%까지 무료+이상은 유료 랜덤먹이. 퀘스트 XP보상 추가. 레벨 ×70(30%빠름). 도감 관계표시 키움
 // 버전 3곳 동시 갱신: (1) 이 주석, (2) BEASTLOG_VERSION, (3) manifest.json
 
-const BEASTLOG_VERSION = '0.46.0';
+const BEASTLOG_VERSION = '0.48.0';
 const MODULE = 'beast_log';
 let LAST_ERROR = '';
 const DBG_LOG = [];
@@ -35,6 +35,8 @@ const MASCOTS = {
     hamster: { label: '햄스터', stages: [{ min: 10, emoji: '🧐', name: '현자 햄스터' }, { min: 5, emoji: '🐹', name: '통통 햄스터' }, { min: 1, emoji: '🐹', name: '햄스터' }] },
     rabbit: { label: '토끼', stages: [{ min: 10, emoji: '🐇', name: '달의 토끼' }, { min: 5, emoji: '🐰', name: '토끼' }, { min: 1, emoji: '🐰', name: '아기 토끼' }] },
     monkey: { label: '원숭이', stages: [{ min: 10, emoji: '🐒', name: '손오공' }, { min: 5, emoji: '🐒', name: '원숭이' }, { min: 1, emoji: '🐵', name: '아기 원숭이' }] },
+    fox: { label: '여우', stages: [{ min: 10, emoji: '🦊', name: '구미호' }, { min: 5, emoji: '🦊', name: '여우' }, { min: 1, emoji: '🦊', name: '새끼 여우' }] },
+    panda: { label: '판다', stages: [{ min: 10, emoji: '🐼', name: '도사 판다' }, { min: 5, emoji: '🐼', name: '판다' }, { min: 1, emoji: '🐼', name: '새끼 판다' }] },
 };
 const MASCOT_KEYS = Object.keys(MASCOTS);
 
@@ -48,6 +50,8 @@ const BL_SPRITES = {
   chick: { w:16, h:15, noExpr:true, pal:{O:'#f6d442',Y:'#ee882a',E:'#fbf3e0',e:'#e6d8b8'}, rows:['................','......KKKK......','....KKOOOOKK....','...KOOOOOOOOK...','..KOOKKOOKKOOK..','..KOOKKOOKKOOK..','..KOOOOYYOOOOK..','..KOOOOOOOOOOK..','.KEKEKKEEKKEKEK.','.KEEEEEEEEEEEEK.','.KEEEEEEEEEEEEK.','.KEEEeeeeeeEEEK.','..KEEEEEEEEEEK..','...KKEEEEEEKK...','.....KKKKKK.....'] },
   rabbit: { w:16, h:15, pal:{O:'#fbfbf7',P:'#f3a6a6'}, rows:['..KKK......KKK..','.KOPK......KPOK.','.KOPK......KPOK.','.KOPK......KPOK.','.KOOK......KOOK.','.KOOKKKKKKKKOOK.','.KOOOOOOOOOOOOK.','.KOOOOOOOOOOOOK.','.KOOKKOOOOKKOOK.','.KOOKKOOOOKKOOK.','.KOOOOOOOOOOOOK.','.KPOOOOKKOOOOPK.','.KOOOOOOOOOOOOK.','..KKKKKKKKKKKK..','................'] },
   monkey: { w:16, h:15, eyeBg:'C', pal:{O:'#c49c6e',C:'#f7ebce'}, rows:['................','...KKKKKKKKKK...','..KOOOOOOOOOOK..','.KOOOOOOOOOOOOK.','.KOOOOOOOOOOOOK.','KKOOCCCCCCCCOOKK','KOKOCCCCCCCCOKOK','KKOCCCCCCCCCCOKK','.KOCKKCCCCKKCOK.','.KOCKKCCCCKKCOK.','.KOCCCCCCCCCCOK.','.KOCCCKKKKCCCOK.','.KOOCCCCCCCCOOK.','..KKOOOOOOOOKK..','...KKKKKKKKKK...'] },
+  fox: { w:16, h:15, pal:{O:'#f0a860',C:'#fdf3e6'}, rows:['..KK........KK..','.KOK........KOK.','.KOOK......KOOK.','.KOOOKKKKKKOOOK.','.KOOOOOOOOOOOOK.','.KOOOOOOOOOOOOK.','.KOOOOOOOOOOOOK.','.KOOOOOOOOOOOOK.','.KOOKKOOOOKKOOK.','.KCOKKOOOOKKOCK.','.KCCOOOOOOOOCCK.','.KCCCCOOOOCCCCK.','.KCCCCCKKCCCCCK.','..KKCCCCCCCCKK..','................'] },
+  panda: { w:16, h:15, noExpr:true, pal:{O:'#d6d3cd',B:'#2c2725',A:'#ffffff',Y:'#ffffff',P:'#d6d3cd'}, rows:['..BB........BB..','.BABB......BBAB.','.BBBBKKKKKKBBBB.','.KKOOOOOOOOOOKK.','.KOOOOOOOOOOOOK.','.KOBBOOOOOOBBOK.','.KBBBBOOOOBBBBK.','.KBBYBOOOOBYBBK.','.KBBBBOOOOBBBBK.','.KOBBOOOOOOBBOK.','.KPPOOOKKOOOPPK.','.KOOOOKKKKOOOOK.','..KKOOOOOOOOKK..','................','................'] },
 };
 const MONO_INK = new Set(['K', 'B', 'D', 'Y', 'P', 'N']);
 // 표정: 눈 자리(2x2 기본)를 지우고 표정별 픽셀로 다시 그림
@@ -55,13 +59,22 @@ const EYE_BASE = [[4, 8], [5, 8], [4, 9], [5, 9], [10, 8], [11, 8], [10, 9], [11
 const EYE_EXPR = {
     open:  [[4, 8], [5, 8], [4, 9], [5, 9], [10, 8], [11, 8], [10, 9], [11, 9]],
     happy: [[5, 8], [4, 9], [6, 9], [10, 8], [9, 9], [11, 9]],            // ^ ^
-    sad:   [[4, 8], [6, 8], [5, 9], [9, 8], [11, 8], [10, 9]],            // ︵ ︵
+    sad:   [[4, 8], [5, 8], [10, 8], [11, 8]],                            // ㅠㅠ 위쪽 눈 + 눈물(EXTRA)
     tired: [[4, 9], [5, 9], [10, 9], [11, 9]],                            // - -
     blink: [[4, 9], [5, 9], [6, 9], [9, 9], [10, 9], [11, 9]],            // _ _
     wink:  [[4, 8], [5, 8], [4, 9], [5, 9], [9, 9], [10, 9], [11, 9]],    // ▣ _
     regal: [[4, 8], [5, 8], [10, 8], [11, 8]],                           // 내려다보는 눈(윗눈꺼풀)
     fierce:[[4, 8], [5, 9], [10, 9], [11, 8]],                           // 사나운 눈(빗금)
+    sleep: [[4, 9], [5, 9], [10, 9], [11, 9]],                           // 감은 눈(- -) + zzz(EXTRA)
 };
+// 표정별 색상 추가 픽셀 [x, y, color] — 눈물 (몸 위에 덮어그림)
+const TEAR = '#5a9fd6', ZCOL = '#7d9bd6';
+const EYE_EXPR_EXTRA = {
+    sad:  [[4, 9, TEAR], [4, 10, TEAR], [11, 9, TEAR], [11, 10, TEAR]],   // 눈 밑 눈물 줄기 ㅠㅠ
+};
+// 자는 표정 zzz: 머리 위로 확장한 영역(음수 y)에 그림 — 어떤 마스코트와도 안 겹침
+// 좌표계: 원래 스프라이트 위에 4칸 띄운 공간(y = -4 ~ -1), Z 지그재그
+const SLEEP_ZZZ = [[12, -4], [13, -4], [14, -4], [14, -3], [13, -3], [12, -2], [12, -1], [13, -1], [14, -1]];
 // 진화 비주얼: tier2(자란다)=색 짙어짐, tier3(각성)=고유 변신. mono모드/picker/shop엔 미적용(tier 1)
 const SPR_CHICK2 = { w: 16, h: 15, pal: { O: '#f6d442', Y: '#ee882a', P: '#f09e9e' }, rows: ['................', '................', '...KKKKKKKKKK...', '..KOOOOOOOOOOK..', '.KOOOOOOOOOOOOK.', '.KOOOOOOOOOOOOK.', '.KOOOOOOOOOOOOK.', '.KOOOOOOOOOOOOK.', '.KOOKKOOOOKKOOK.', '.KPPKKOOOOKKPPK.', '.KOOOOOOOOOOOOK.', '.KOOOOYYYYOOOOK.', '.KOOOOOYYOOOOOK.', '..KKKKKKKKKKKK..', '................'] };            // 2단계: 병아리
 const SPR_CHICK3 = { w: 16, h: 15, pal: { O: '#fdfaf0', R: '#e2483a', Y: '#ee882a' }, rows: ['.....RR.RR......', '....RRRRRRR.....', '...KKKKKKKKKK...', '..KOOOOOOOOOOK..', '.KOOOOOOOOOOOOK.', '.KOOOOOOOOOOOOK.', '.KOOOOOOOOOOOOK.', '.KOOOOOOOOOOOOK.', '.KOOKKOOOOKKOOK.', '.KOOKKOOOOKKOOK.', '.KOOOOOOOOOOOOK.', '.KOOOOYYYYOOOOK.', '.KOOOOOYYOOOOOK.', '..KKKKKKKKKKKK..', '................'] };  // 3단계: 닭(흰 얼굴+빨간 볏)
@@ -73,6 +86,8 @@ const EVO_VIS = {
     chick:   { 2: { sprite: SPR_CHICK2 }, 3: { sprite: SPR_CHICK3, expr: 'fierce' } },                              // 알병아리→병아리→닭 (형태 변신)
     rabbit:  { 2: { pal: { O: '#dfd2bb', P: '#e6a8aa' } }, 3: { pal: { O: '#cdd2ea', P: '#c9b6e0' }, eyeColor: '#ffe79c' } },      // 월광 토끼
     monkey:  { 2: { pal: { O: '#86562c', C: '#e6d2a4' } }, 3: { pal: { O: '#e0a531', C: '#fff4d6' }, band: '#f0c84a', expr: 'fierce' } }, // 원숭이 왕(손오공)
+    fox:     { 2: { pal: { O: '#d4661f' } }, 3: { pal: { O: '#e7e4ef', C: '#ffffff', K: '#5a5470' }, eyeColor: '#ffd24a' } }, // 구미호(은빛+금눈)
+    panda:   { 2: { pal: { O: '#faf7ef', P: '#f3a6b0' } }, 3: { pal: { O: '#faf7ef', B: '#1a1614', A: '#cdb8e6', Y: '#ffd24a', P: '#cdb8e6', K: '#181513' } } }, // 도사 판다(연보라 포인트+금눈)
 };
 const EVO_CROWN = [[5, 1], [6, 1], [7, 1], [8, 1], [9, 1], [5, 0], [7, 0], [9, 0]];      // 왕관: 띠5 + 뿔3
 const EVO_COMB = [[6, 1], [7, 1], [8, 1], [9, 1], [6, 0], [8, 0]];                       // 닭 볏
@@ -107,9 +122,14 @@ function spriteSVG(key, size, mono, expr, tier) {
         for (const [x, y] of EYE_BASE) grid[y][x] = body;             // 눈 지움(몸색)
         for (const [x, y] of EYE_EXPR[effExpr]) grid[y][x] = BL_INK;  // 표정 그림
     }
-    if (vis && vis.eyeColor && !s.noExpr) {                            // 빛나는 눈(고양이 각성)
+    if (!s.noExpr && effExpr && EYE_EXPR_EXTRA[effExpr]) {             // 색상 추가픽셀(눈물·zzz)
+        for (const [x, y, col] of EYE_EXPR_EXTRA[effExpr]) {
+            if (y >= 0 && y < s.h && x >= 0 && x < s.w) grid[y][x] = mono ? BL_INK : col;
+        }
+    }
+    if (vis && vis.eyeColor && !s.noExpr) {                            // 빛나는 눈(고양이/토끼/구미호)
         const coords = (effExpr && effExpr !== 'open' && EYE_EXPR[effExpr]) ? EYE_EXPR[effExpr] : EYE_BASE;
-        for (const [x, y] of coords) if (grid[y][x] === BL_INK) grid[y][x] = vis.eyeColor;
+        for (const [x, y] of coords) grid[y][x] = vis.eyeColor;
     }
     if (vis && vis.crown) for (const [x, y] of EVO_CROWN) grid[y][x] = vis.crown;  // 왕관(호랑이)
     if (vis && vis.comb) for (const [x, y] of EVO_COMB) grid[y][x] = vis.comb;     // 볏(병아리→닭)
@@ -127,14 +147,26 @@ function spriteSVG(key, size, mono, expr, tier) {
             x += run;
         }
     }
+    // 자는 표정: 머리 위 여백에 zzz를 그림. viewBox는 그대로 두고 overflow로 위에 띄움(레이아웃 안 흔들림)
+    const isSleep = (effExpr === 'sleep' && !s.noExpr);
+    if (isSleep) {
+        const zc = mono ? BL_INK : ZCOL;
+        for (const [x, y] of SLEEP_ZZZ) rects += `<rect x="${x}" y="${y}" width="1" height="1" fill="${zc}"/>`;
+    }
     const h = Math.round(size * s.h / s.w);
-    return `<svg class="bl-sprite" width="${size}" height="${h}" viewBox="0 0 ${s.w} ${s.h}" shape-rendering="crispEdges" xmlns="http://www.w3.org/2000/svg">${rects}</svg>`;
+    const sleepCls = isSleep ? ' bl-sleeping' : '';
+    const ov = isSleep ? ' style="overflow:visible"' : '';
+    return `<svg class="bl-sprite${sleepCls}" width="${size}" height="${h}" viewBox="0 0 ${s.w} ${s.h}"${ov} shape-rendering="crispEdges" xmlns="http://www.w3.org/2000/svg">${rects}</svg>`;
 }
 function stateExpr() {
-    if (STATE.hp <= 1) return 'tired';
-    if (STATE.mood <= 1) return 'sad';
-    if (STATE.mood >= 4 && STATE.hunger >= 3) return 'happy';
-    return 'open';
+    const hunger = STATE.hunger == null ? 80 : STATE.hunger;
+    const hp = STATE.hp == null ? 100 : STATE.hp;
+    const mood = STATE.mood == null ? 80 : STATE.mood;
+    if (hunger <= 20) return 'sad';     // 😢 배고픔 바닥 → 눈물
+    if (hp <= 20) return 'tired';       // 😪 체력 바닥
+    if (mood <= 20) return 'sad';       // 😢 기분 바닥 → 눈물
+    if (mood >= 60) return 'happy';     // 😊 기분 좋음
+    return 'open';                      // 😐 평온(기본)
 }
 function mascotSVG(size, expr) { return spriteSVG(EXT.mascot, size, EXT.spriteMono === true, expr || stateExpr(), evoTier(STATE.level)); }
 function setMascotEls(expr) {
@@ -144,10 +176,71 @@ function setMascotEls(expr) {
     if (bubbleEl && bubbleEl.style.display !== 'none') bubbleEl.innerHTML = spriteSVG(EXT.mascot, 34, mono, expr, tier);
 }
 let blinkTimer = null;
+let lastTouch = Date.now();        // 마지막 상호작용 시각
+let isSleeping = false;            // 졸고 있는 중인지
+let hungerWarnLevel = -1;          // 마지막으로 띄운 배고픔 경고 단계 (-1 없음, 0 = 20%경고, 1 = 0%경고)
+const SLEEP_QUIET_MS = 90000;      // 90초 조용하면 졸 수 있음
+const HUNGER_DECAY_MS = 2 * 60 * 60 * 1000;  // 2시간당
+const HUNGER_DECAY_AMT = 10;       // -10%
+function noteTouch() {
+    lastTouch = Date.now();
+    if (isSleeping) { isSleeping = false; setMascotEls(stateExpr()); }
+}
+// 배고픔 자동 감소 (채팅 켜져 있는 동안만, 깜빡임 틱에서 호출)
+function tickHungerDecay() {
+    if (!STATE) return;
+    const now = Date.now();
+    const last = STATE.lastHungerDecay || now;
+    if (now - last < HUNGER_DECAY_MS) return;
+    const steps = Math.floor((now - last) / HUNGER_DECAY_MS);
+    STATE.hunger = clamp0100((STATE.hunger == null ? 80 : STATE.hunger) - HUNGER_DECAY_AMT * steps);
+    STATE.lastHungerDecay = last + steps * HUNGER_DECAY_MS;
+    // 배고픔 바닥 → 기분·체력 연쇄
+    if (STATE.hunger <= 0) {
+        STATE.mood = clamp0100((STATE.mood || 0) - 5);
+        STATE.hp = clamp0100((STATE.hp || 0) - 5);
+    }
+    // 셋 다 바닥 → 레벨 하락(진화도 자동 해제) — 죽음·행동불가는 절대 없음
+    if (STATE.hunger <= 0 && STATE.hp <= 0 && STATE.mood <= 0 && STATE.level > 1) {
+        const beforeTier = evoTier(STATE.level);
+        STATE.level -= 1;
+        STATE.xp = 0;
+        const afterTier = evoTier(STATE.level);
+        if (afterTier < beforeTier) flash('💧 너무 방치돼서… 모습이 되돌아갔어요');
+        else flash(`💧 레벨 다운… Lv.${STATE.level}`);
+    }
+    maybeHungerWarn();
+    saveState(STATE); renderAll();
+}
+// 배고픔 경고 토스트 (각 단계당 한 번씩, 설정 ON일 때만)
+function maybeHungerWarn() {
+    const warnOn = !STATE.settings || STATE.settings.hungerWarn !== false;
+    if (!warnOn) { hungerWarnLevel = -1; return; }
+    const h = STATE.hunger == null ? 80 : STATE.hunger;
+    if (h <= 0) {
+        if (hungerWarnLevel < 1) { flash('🐯 삐졌습니다…'); hungerWarnLevel = 1; }
+    } else if (h <= 20) {
+        if (hungerWarnLevel < 0 || hungerWarnLevel === -1) { flash('🐯 슬슬 배고픈 것 같아요'); hungerWarnLevel = 0; }
+    } else {
+        hungerWarnLevel = -1;  // 회복되면 경고 리셋
+    }
+}
+function isSleepy() {
+    if (isSleeping) return true;
+    const quiet = (Date.now() - lastTouch) > SLEEP_QUIET_MS;
+    const ok = (STATE.hunger || 0) >= 40 && (STATE.hp || 0) >= 40 && (STATE.mood || 0) >= 40;
+    return quiet && ok && Math.random() < 0.2;
+}
 function startBlink() {
     if (blinkTimer) return;
     blinkTimer = setInterval(() => {
         if (typeof document !== 'undefined' && document.hidden) return;
+        tickHungerDecay();
+        // 졸기 판정 (상태 양호 + 조용 + 랜덤)
+        if (isSleepy()) {
+            if (!isSleeping) { isSleeping = true; setMascotEls('sleep'); }
+            return;
+        }
         if (Math.random() > 0.5) return;
         setMascotEls('blink');
         setTimeout(() => setMascotEls(stateExpr()), 160);
@@ -178,7 +271,7 @@ function relTier(aff) { return relTierObj(aff).label; }
 function affinityDelta(kind) { return ({ help: 2, cooperate: 3, activity: 1, interact: 0, loot: 0, flee: 0, attack: -2 })[kind] || 0; }
 
 // ── 알바 / 돈 / 상점 ──
-const MASCOT_PRICE = { tiger: 0, cat: 0, dog: 0, monkey: 200000, chick: 220000, hamster: 300000, rabbit: 320000 };
+const MASCOT_PRICE = { tiger: 0, cat: 0, dog: 0, monkey: 100000, chick: 150000, hamster: 170000, rabbit: 170000, fox: 200000, panda: 200000 };
 const JOB_LOAD = ['알바 뛰는 중…', '시급 계산 중…', '사장님 눈치 보는 중…', '진상 응대 중…', '허드렛일 처리 중…'];
 function ownsMascot(k) { return (STATE.owned || []).includes(k); }
 function fmtMoney(n) { return (n || 0).toLocaleString('ko-KR') + '원'; }
@@ -213,8 +306,8 @@ ${getScene()}규칙:
 - **반드시 지금 세계관·장소·상황에 자연스럽게 들어맞는 목표여야 한다.** 그 장면에 있을 법하지 않은 소품·장소·인물을 요구하지 마라(좁은 자취방인데 럭비공·말[馬]을 찾으라는 식 금지). 거기 실제로 있을 법한 것으로만.
 - 다양한 예시 결: "{{char}}가 먼저 화제를 돌리게 만들기", "{{char}}에게서 '고맙다'는 말 듣기", "둘이 다른 방으로 자리를 옮기기", "지나가던 누군가가 말을 걸게 하기", "{{char}}를 말문 막히게 하기", "이 방에 있을 법한 물건으로 장난치기" 등 — 위는 예시일 뿐, 지금 장면에 맞는 새 걸 지어라.
 - 너무 거창/추상(세계 구하기 등) 금지. 한 장면~몇 턴 안에 자연스럽게 될 소소한 것. 데드팬·엉뚱 유머. 한국어.
-- 보상(rewardType): 대부분 "money"(1만~10만). 가끔 "item"(엉뚱한 물건). 관계·감정이 얽힌 목표면 가끔 "secret"({{char}}의 의외의 비밀, 달성 시 공개).${recentQuestsHint()}
-형식(JSON만, 코드펜스 금지): {"goal":"목표 한 줄","emoji":"목표 이모지 하나","rewardType":"money|item|secret","reward":money면 정수·item이면 "물건이름"·secret이면 null}
+- 보상(rewardType): "money"(1만~10만), "item"(엉뚱한 물건), "xp"(경험치), "secret"(지금 이 RP 맥락에 맞는 {{char}}의 의외의 비밀). 비중은 item > xp > money > secret 정도. secret은 관계·감정이 얽힌 목표일 때만.${recentQuestsHint()}
+형식(JSON만, 코드펜스 금지): {"goal":"목표 한 줄","emoji":"목표 이모지 하나","rewardType":"money|item|xp|secret","reward":money면 정수·item이면 "물건이름"·xp면 정수(10~40)·secret이면 null}
 [대화 맥락]
 ${getConvo()}`;
 }
@@ -225,7 +318,7 @@ function buildQuestCheckPrompt(q) {
 - **연속성·맥락을 본다:** 달성 과정에 세계관·장소·상황과 어긋나는 게 끼면(좁은 자취방에 난데없이 럭비공이 튀어나오는 식, 그 장면에 있을 리 없는 소품·인물이 갑자기 등장) 인정하지 마라. 그 자리에 자연스럽게 있을 법한 것으로 이뤄져야 한다.
 - 억지로 끼워맞춘 전개, 맥락 없이 편의상 소환된 물건/사건은 불인정.
 목표: "${q.goal}"
-${getScene()}판정 형식(JSON만): {"done":true 또는 false,"reason":"왜 됐는지/안 됐는지 한 문장으로 짧고 완결되게 (대략 40자 이내, 중간에 끊기지 않게)","secret":${q.rewardType === 'secret' ? '달성됐다면 이 RP 맥락에 맞는 {{char}}의 의외의 비밀 한 줄, 아니면 null' : 'null'}}
+${getScene()}판정 형식(JSON만): {"done":true 또는 false,"reason":"왜 됐는지/안 됐는지 한 문장으로 짧고 완결되게 (대략 40자 이내, 중간에 끊기지 않게)","secret":${q.rewardType === 'secret' ? '달성됐다면 지금 이 RP의 인물·장소·사건 맥락에 딱 맞는 {{char}}만의 구체적인 비밀 한 줄(일반적이거나 어디서나 통할 법한 비밀 금지), 아니면 null' : 'null'}}
 [대화 맥락]
 ${getConvo()}`;
 }
@@ -262,21 +355,52 @@ function applyJob(job) {
     if (STATE.jobs.length > 30) STATE.jobs.length = 30;
     STATE.lastJobTurn = getChatLen();
     STATE.jobCD = 2 + Math.floor(Math.random() * 3);   // 다음 알바까지 2~4회 랜덤
-    STATE.hunger = clamp05((STATE.hunger == null ? 4 : STATE.hunger) - 1);   // 알바 → 배고파짐
-    if (Math.random() < 0.35) STATE.hp = clamp05((STATE.hp == null ? 5 : STATE.hp) - 1);   // 가끔 고된 노동 → 체력↓
+    STATE.hunger = clamp0100((STATE.hunger == null ? 80 : STATE.hunger) - 12);   // 알바 → 배고파짐
+    if (Math.random() < 0.35) STATE.hp = clamp0100((STATE.hp == null ? 100 : STATE.hp) - 10);   // 가끔 고된 노동 → 체력↓
     saveState(STATE); renderAll();
     showJobResult(job);
 }
 function deleteJob(id) { STATE.jobs = (STATE.jobs || []).filter(j => j.id !== id); saveState(STATE); renderFull(); }
 function clearJobs() { showConfirm('알바 내역 비우기', '알바 기록을 전부 지울까요? (돈은 그대로)', () => { STATE.jobs = []; STATE.lastJob = null; saveState(STATE); renderAll(); }); }
 const FEED_FOOD = ['편의점 삼각김밥', '길에서 주운 붕어빵', '유통기한 임박 소시지', '수상한 통조림', '사장이 남긴 식은 치킨', '정체불명의 사료', '눅눅한 새우깡', '반쯤 녹은 아이스크림', '누가 흘린 호두과자'];
+const FEED_FREE_CAP = 60;   // 무료로 채울 수 있는 배고픔 상한
+const FEED_FREE_GAIN = 20;  // 무료 1회 회복량
+// 유료 먹이 메뉴: 회복량 → 가격
+const FEED_PAID_MENU = [
+    { gain: 5, price: 10000, food: '고급 트릿 한 알' },
+    { gain: 10, price: 20000, food: '수제 간식 한 접시' },
+    { gain: 30, price: 30000, food: '푸짐한 진수성찬' },
+];
 function onFeed() {
-    if (STATE.hunger >= 5 && STATE.hp >= 5 && STATE.mood >= 5) { showNote('🍖 밥 주기', '이미 배부르고 쌩쌩하다', '더는 못 먹겠다는 표정으로 고개를 돌린다.'); return; }
-    STATE.hunger = clamp05((STATE.hunger || 0) + 2);
-    STATE.hp = clamp05((STATE.hp || 0) + 1);
-    STATE.mood = clamp05((STATE.mood || 0) + 1);
-    saveState(STATE); renderAll();
-    showNote('🍖 밥 주기', `'${pick(FEED_FOOD)}'`, pick(FEED_LINE));
+    const hunger = STATE.hunger == null ? 80 : STATE.hunger;
+    // 이미 배부름
+    if (hunger >= 100) {
+        showNote('🍖 밥 주기', '이미 배가 빵빵하다', '더는 못 먹겠다는 표정으로 고개를 돌린다.');
+        return;
+    }
+    // 무료 구간: 60% 미만이면 무료로 먹임
+    if (hunger < FEED_FREE_CAP) {
+        STATE.hunger = clamp0100(Math.min(FEED_FREE_CAP, hunger + FEED_FREE_GAIN));
+        STATE.mood = clamp0100((STATE.mood || 0) + 5);
+        saveState(STATE); renderAll();
+        showNote('🍖 밥 주기', `'${pick(FEED_FOOD)}'`, pick(FEED_LINE));
+        return;
+    }
+    // 유료 구간: 60% 이상이면 특식 구매 제안 (랜덤 1종)
+    const menu = pick(FEED_PAID_MENU);
+    const money = STATE.money || 0;
+    if (money < menu.price) {
+        showNote('🍖 특식 가게', `'${menu.food}' — ${fmtMoney(menu.price)}`, `배고픔 +${menu.gain}%\n돈이 ${fmtMoney(menu.price - money)} 모자란다. 알바라도 뛰자.`);
+        return;
+    }
+    showConfirm('🍖 특식 구매', `'${menu.food}'\n배고픔 +${menu.gain}% · ${fmtMoney(menu.price)}\n\n사서 먹일까요?`, () => {
+        STATE.money = (STATE.money || 0) - menu.price;
+        STATE.hunger = clamp0100((STATE.hunger || 0) + menu.gain);
+        STATE.mood = clamp0100((STATE.mood || 0) + 8);
+        STATE.hp = clamp0100((STATE.hp || 0) + 4);
+        saveState(STATE); renderAll();
+        showNote('🍖 특식', `'${menu.food}'`, pick(FEED_LINE));
+    });
 }
 function resetMoney() { showConfirm('돈 리셋', `보유 금액 ${fmtMoney(STATE.money)}을(를) 0원으로 되돌릴까요?`, () => { STATE.money = 0; saveState(STATE); renderAll(); flash('💰 0원으로 리셋'); }); }
 
@@ -286,10 +410,16 @@ function questRemaining() { const cd = (STATE.questCD == null ? 0 : STATE.questC
 function canQuest() { return questRemaining() <= 0; }
 function normalizeQuest(o) {
     o = o || {};
-    let rt = (o.rewardType === 'item' || o.rewardType === 'secret') ? o.rewardType : 'money';
+    let rt = ['item', 'xp', 'secret', 'money'].includes(o.rewardType) ? o.rewardType : 'money';
+    // 비중 보정: LLM이 money로 쏠리는 경향 → item > xp > money > secret 분포로 재배분
+    if (rt === 'money' && Math.random() < 0.55) {
+        const r = Math.random();
+        rt = r < 0.45 ? 'item' : (r < 0.85 ? 'xp' : 'money');
+    }
     let reward = null;
     if (rt === 'money') { let m = parseInt(o.reward, 10); reward = Number.isFinite(m) ? Math.max(10000, Math.min(100000, m)) : 30000; }
     else if (rt === 'item') { reward = String(o.reward || '수상한 물건').slice(0, 30); }
+    else if (rt === 'xp') { let x = parseInt(o.reward, 10); reward = Number.isFinite(x) ? Math.max(10, Math.min(40, x)) : (10 + Math.floor(Math.random() * 31)); }
     return { id: cryptoId(), goal: String(o.goal || '뭔가 해내기').slice(0, 140), emoji: String(o.emoji || '🎯').slice(0, 4), rewardType: rt, reward, time: nowHHMM() };
 }
 async function onNewQuest() {
@@ -325,6 +455,7 @@ function completeQuest(q, secretText) {
     let rewardMsg = '';
     if (q.rewardType === 'money') { STATE.money = (STATE.money || 0) + q.reward; rewardMsg = `💰 ${fmtMoney(q.reward)} 획득`; }
     else if (q.rewardType === 'item') { STATE.items.unshift({ id: cryptoId(), name: q.reward, emoji: '🎁', rarity: 'common', itemType: null, price: 0 }); if (STATE.items.length > 80) STATE.items.length = 80; rewardMsg = `🎁 '${q.reward}' 획득`; }
+    else if (q.rewardType === 'xp') { const x = q.reward || 20; STATE.xp = (STATE.xp || 0) + x; levelCheck(); rewardMsg = `⭐ 경험치 +${x}`; }
     else { const sec = String(secretText || '…사실 별 거 아니었다').slice(0, 140); STATE.secrets = STATE.secrets || []; STATE.secrets.unshift({ id: cryptoId(), text: sec, goal: q.goal, time: nowHHMM() }); if (STATE.secrets.length > 50) STATE.secrets.length = 50; rewardMsg = `🔒 ${sec}`; }
     STATE.quests = (STATE.quests || []).filter(x => x.id !== q.id);
     saveState(STATE); renderAll();
@@ -446,14 +577,33 @@ const STATE_KEY = 'beast_log_state';
 function defaultState() {
     return {
         uuid: cryptoId(), level: 1, xp: 0, title: '갓 들어온 손님', rep: 0,
-        mood: 4, hunger: 4, hp: 5,
+        mood: 80, hunger: 80, hp: 100,
         items: [], encounters: [], npcs: {},
         currentNpc: null, currentSituation: null,
         money: 0, owned: ['tiger', 'cat', 'dog'], lastJobTurn: -99, lastJob: null, jobs: [],
         quests: [], secrets: [],
         pins: [],
-        lastInjectTurn: -99, settings: { injectDefault: false },
+        lastInjectTurn: -99, lastHungerDecay: Date.now(),
+        statScale: 100,
+        settings: { injectDefault: false, hungerWarn: true },
     };
+}
+// 구버전(0~5) 데이터를 0~100으로 변환
+function migrateState(s) {
+    if (!s || typeof s !== 'object') return s;
+    if (s.statScale === 100) return s;   // 이미 변환됨
+    const conv = (v, def) => {
+        if (v == null) return def;
+        const n = Number(v);
+        if (!Number.isFinite(n)) return def;
+        return (n <= 5) ? Math.round(n * 20) : Math.round(n);  // 0~5 → 0~100
+    };
+    s.mood = conv(s.mood, 80);
+    s.hunger = conv(s.hunger, 80);
+    s.hp = conv(s.hp, 100);
+    if (s.lastHungerDecay == null) s.lastHungerDecay = Date.now();
+    s.statScale = 100;
+    return s;
 }
 function loadState() {
     const ctx = getCtx();
@@ -463,7 +613,7 @@ function loadState() {
         const m = Object.assign(defaultState(), e);
         m.settings = Object.assign(defaultState().settings, e.settings || {});
         m.npcs = e.npcs || {};
-        return m;
+        return migrateState(m);
     }
     const fresh = defaultState();
     ctx.chatMetadata[STATE_KEY] = fresh;
@@ -505,6 +655,7 @@ function importData() {
                     STATE = Object.assign(defaultState(), s);
                     STATE.settings = Object.assign(defaultState().settings, s.settings || {});
                     STATE.npcs = s.npcs || {};
+                    migrateState(STATE);
                     saveState(STATE); renderAll(); refreshMemory();
                     flash('📂 백업 복원됨');
                 });
@@ -804,11 +955,11 @@ function applyOutcome(item, choiceLabel, outcome, kind) {
     if (item.category === 'situation') STATE.currentSituation = { emoji: item.emoji, title: item.title };
 
     // ── 스탯 변화 (조우) ──
-    if (outcome.rep > 0) STATE.mood = clamp05(STATE.mood + 1);          // 좋은 조우 → 기분↑
-    else if (outcome.rep < 0) STATE.mood = clamp05(STATE.mood - 1);     // 나쁜 조우 → 기분↓
-    if (kind === 'attack') { STATE.hp = clamp05(STATE.hp - 1); STATE.mood = clamp05(STATE.mood - 1); }  // 싸움 → 체력·기분↓
-    if (STATE.encounters.length % 3 === 0) STATE.hunger = clamp05(STATE.hunger - 1);                     // 활동하면 배고파짐
-    if (STATE.hunger <= 0) { STATE.mood = clamp05(STATE.mood - 1); STATE.hp = clamp05(STATE.hp - 1); }   // 굶으면 방치 페널티
+    if (outcome.rep > 0) STATE.mood = clamp0100(STATE.mood + 8);          // 좋은 조우 → 기분↑
+    else if (outcome.rep < 0) STATE.mood = clamp0100(STATE.mood - 8);     // 나쁜 조우 → 기분↓
+    if (kind === 'attack') { STATE.hp = clamp0100(STATE.hp - 10); STATE.mood = clamp0100(STATE.mood - 8); }  // 싸움 → 체력·기분↓
+    if (STATE.encounters.length % 3 === 0) STATE.hunger = clamp0100(STATE.hunger - 8);                     // 활동하면 배고파짐
+    if (STATE.hunger <= 0) { STATE.mood = clamp0100(STATE.mood - 5); STATE.hp = clamp0100(STATE.hp - 5); }   // 굶으면 방치 페널티
 
     levelCheck();
     saveState(STATE);
@@ -816,11 +967,13 @@ function applyOutcome(item, choiceLabel, outcome, kind) {
     refreshMemory();
     showResultPopup(entry);
 }
-function clamp05(n) { return Math.max(0, Math.min(5, n)); }
+function clamp0100(n) { return Math.max(0, Math.min(100, Math.round(n))); }
+function clamp05(n) { return clamp0100(n); }  // 하위호환 별칭
+function levelNeed(lv) { return lv * 70; }   // 레벨업 필요 XP (기존 ×100 → ×70, 30% 빠름)
 function levelCheck() {
-    let need = STATE.level * 100;
-    while (STATE.xp >= need) { STATE.xp -= need; STATE.level += 1; flash(`⭐ 레벨업! Lv.${STATE.level}`); need = STATE.level * 100; }
-    while (STATE.xp < 0 && STATE.level > 1) { STATE.level -= 1; STATE.xp += STATE.level * 100; flash(`💧 레벨 다운… Lv.${STATE.level}`); }
+    let need = levelNeed(STATE.level);
+    while (STATE.xp >= need) { STATE.xp -= need; STATE.level += 1; flash(`⭐ 레벨업! Lv.${STATE.level}`); need = levelNeed(STATE.level); }
+    while (STATE.xp < 0 && STATE.level > 1) { STATE.level -= 1; STATE.xp += levelNeed(STATE.level); flash(`💧 레벨 다운… Lv.${STATE.level}`); }
     if (STATE.xp < 0) STATE.xp = 0;   // Lv.1 바닥
 }
 
@@ -949,6 +1102,7 @@ function syncControls() {
     if (consoleEl) { const sw = consoleEl.querySelector('.bl-sw'); if (sw) sw.dataset.on = STATE.settings.injectDefault ? 'true' : 'false'; }
     if (fullEl) {
         const fi = fullEl.querySelector('.bl-t-inject'); if (fi) fi.checked = STATE.settings.injectDefault;
+        const fhw = fullEl.querySelector('.bl-t-hwarn'); if (fhw) fhw.checked = !STATE.settings || STATE.settings.hungerWarn !== false;
         const fa = fullEl.querySelector('.bl-t-auto'); if (fa) fa.checked = EXT.autoDetect;
         const fc = fullEl.querySelector('.bl-t-chain'); if (fc) fc.checked = EXT.chainOn !== false;
         const fm = fullEl.querySelector('.bl-t-mono'); if (fm) fm.checked = EXT.spriteMono === true;
@@ -958,7 +1112,12 @@ function syncControls() {
 }
 function pickMascot(key) { if (MASCOTS[key] && ownsMascot(key)) { EXT.mascot = key; saveExt(); renderAll(); } }
 function cycleMascot() { const owned = MASCOT_KEYS.filter(ownsMascot); if (!owned.length) return; const i = owned.indexOf(EXT.mascot); EXT.mascot = owned[(i + 1) % owned.length]; saveExt(); renderAll(); }
-function pips(emoji, n) { return emoji.repeat(Math.max(0, n)) + '·'.repeat(Math.max(0, 5 - n)); }
+function pips(emoji, n) { return emoji.repeat(Math.max(0, n)) + '·'.repeat(Math.max(0, 5 - n)); }  // 구버전 호환
+// 상태를 "이모지 라벨 NN%" 형태로 표시 (0~100)
+function statPct(emoji, label, val) {
+    const v = clamp0100(val == null ? 0 : val);
+    return label ? `${emoji} ${label} ${v}%` : `${emoji} ${v}%`;
+}
 function npcLine() {
     if (!STATE.currentNpc || !STATE.npcs[STATE.currentNpc]) return '<span class="bl-slot-empty">아무도 없음</span>';
     const n = STATE.npcs[STATE.currentNpc];
@@ -1025,6 +1184,7 @@ function buildConsole() {
         <div class="bl-slot"><span class="bl-slot-h">👤 현재 조우</span><span class="bl-slot-v bl-npc-v"></span></div>
       </div>`;
     (document.documentElement || document.body).appendChild(consoleEl);
+    consoleEl.addEventListener('click', noteTouch, true);   // 어떤 조작이든 졸음 깨우기
     consoleEl.querySelector('.bl-sw').addEventListener('click', () => setInjectDefault(!STATE.settings.injectDefault));
     consoleEl.querySelector('.bl-pet-emoji-mini').addEventListener('click', cycleMascot);
     consoleEl.querySelector('.bl-roll').addEventListener('click', onAppear);
@@ -1088,13 +1248,13 @@ function ensureMounted() {
 }
 function renderConsole() {
     if (!consoleEl) return;
-    const evo = evoStage(STATE.level), need = STATE.level * 100;
+    const evo = evoStage(STATE.level), need = levelNeed(STATE.level);
     consoleEl.querySelector('.bl-pet-emoji-mini').innerHTML = mascotSVG(30);
     consoleEl.querySelector('.bl-pet-name').textContent = evo.name;
     consoleEl.querySelector('.bl-lv').textContent = 'Lv.' + String(STATE.level).padStart(2, '0');
-    consoleEl.querySelector('.bl-st-mood').textContent = pips('😊', STATE.mood);
-    consoleEl.querySelector('.bl-st-hunger').textContent = pips('🍖', STATE.hunger);
-    consoleEl.querySelector('.bl-st-hp').textContent = pips('❤️', STATE.hp);
+    consoleEl.querySelector('.bl-st-mood').textContent = statPct('😊', '', STATE.mood);
+    consoleEl.querySelector('.bl-st-hunger').textContent = statPct('🍖', '', STATE.hunger);
+    consoleEl.querySelector('.bl-st-hp').textContent = statPct('❤️', '', STATE.hp);
     consoleEl.querySelector('.bl-xmini i').style.width = Math.min(100, (STATE.xp / need) * 100) + '%';
     consoleEl.querySelector('.bl-rep').textContent = (STATE.rep > 0 ? '+' : '') + STATE.rep;
     const mm = consoleEl.querySelector('.bl-money'); if (mm) mm.textContent = fmtMoney(STATE.money);
@@ -1201,6 +1361,7 @@ function buildFull() {
               <label><span>🔗 조우 체인 <small>(켜면 조우가 랜덤 2~3단계로 이어짐 / 끄면 1번에 끝)</small></span><input type="checkbox" class="bl-t-chain"></label>
               <label><span>🎨 마스코트 흑백(도트라인)</span><input type="checkbox" class="bl-t-mono"></label>
               <label><span>📥 자동 출현 <small>(켜면 RP 상대 답장마다 랜덤 2~4회 간격으로 조우가 저절로 뜸 / 끄면 출현 버튼으로 직접)</small></span><input type="checkbox" class="bl-t-auto"></label>
+              <label><span>🍖 배고픔 알림 <small>(켜면 배고프거나 삐졌을 때 살짝 토스트로 알려줘요 / 끄면 조용히)</small></span><input type="checkbox" class="bl-t-hwarn"></label>
             </div>
             <div class="bl-theme-row">
               <span class="bl-theme-lbl">🎨 테마</span>
@@ -1221,6 +1382,7 @@ function buildFull() {
         </div>
       </div>`;
     (document.documentElement || document.body).appendChild(fullEl);
+    fullEl.addEventListener('click', noteTouch, true);   // 어떤 조작이든 졸음 깨우기
     fullEl.querySelector('.bl-min').addEventListener('click', showMini);
     fullEl.querySelector('.bl-close').addEventListener('click', hideHud);
     fullEl.querySelectorAll('.bl-tab').forEach(t => t.addEventListener('click', () => {
@@ -1233,6 +1395,7 @@ function buildFull() {
     fullEl.querySelector('.bl-t-chain').addEventListener('change', e => setChain(e.target.checked));
     fullEl.querySelector('.bl-t-mono').addEventListener('change', e => setSpriteMono(e.target.checked));
     fullEl.querySelector('.bl-t-auto').addEventListener('change', e => setAutoDetect(e.target.checked));
+    { const hw = fullEl.querySelector('.bl-t-hwarn'); if (hw) hw.addEventListener('change', e => { STATE.settings.hungerWarn = e.target.checked; saveState(STATE); if (e.target.checked) hungerWarnLevel = -1; }); }
     fullEl.querySelector('.bl-roll2').addEventListener('click', onAppear);
     fullEl.querySelector('.bl-rand2').addEventListener('click', onSituation);
     fullEl.querySelectorAll('.bl-acc-head').forEach(h => h.addEventListener('click', e => { if (e.target.closest('.bl-clear-btn')) return; h.parentElement.classList.toggle('collapsed'); }));
@@ -1344,6 +1507,7 @@ function tkLabel(e) {
 function questRewardBadge(q) {
     if (q.rewardType === 'money') return `<span class="bl-q-reward">💰 ${fmtMoney(q.reward)}</span>`;
     if (q.rewardType === 'item') return `<span class="bl-q-reward gift">🎁 정체불명의 선물</span>`;
+    if (q.rewardType === 'xp') return `<span class="bl-q-reward xp">⭐ 경험치 +${q.reward}</span>`;
     return `<span class="bl-q-reward secret">🔒 누군가의 비밀</span>`;
 }
 function renderQuests() {
@@ -1364,13 +1528,13 @@ function renderQuests() {
 }
 function renderFull() {
     if (!fullEl) return;
-    const evo = evoStage(STATE.level), need = STATE.level * 100;
+    const evo = evoStage(STATE.level), need = levelNeed(STATE.level);
     fullEl.querySelector('.bl-pet-emoji').innerHTML = mascotSVG(72);
     fullEl.querySelector('.bl-pet-name').textContent = evo.name;
     fullEl.querySelector('.bl-pet-lvnum').textContent = String(STATE.level).padStart(2, '0');
-    fullEl.querySelector('.bl-st-mood').textContent = pips('😊', STATE.mood);
-    fullEl.querySelector('.bl-st-hunger').textContent = pips('🍖', STATE.hunger);
-    fullEl.querySelector('.bl-st-hp').textContent = pips('❤️', STATE.hp);
+    fullEl.querySelector('.bl-st-mood').textContent = clamp0100(STATE.mood) + '%';
+    fullEl.querySelector('.bl-st-hunger').textContent = clamp0100(STATE.hunger) + '%';
+    fullEl.querySelector('.bl-st-hp').textContent = clamp0100(STATE.hp) + '%';
     fullEl.querySelector('.bl-pet-xptext').textContent = `${STATE.xp} / ${need} XP`;
     fullEl.querySelector('.bl-pet-xpbar i').style.width = Math.min(100, (STATE.xp / need) * 100) + '%';
     fullEl.querySelector('.bl-pet-rep').textContent = (STATE.rep > 0 ? '+' : '') + STATE.rep;
@@ -1800,7 +1964,7 @@ function diagText() {
         'depth/inject : ' + (E.contextDepth || 'balance') + ' / ' + (S.settings && S.settings.injectDefault ? 'on' : 'off'),
         '─ 상태 ─',
         'Lv ' + (S.level || 1) + ' · xp ' + (S.xp || 0) + ' · 돈 ' + (S.money || 0),
-        'mood/hunger/hp : ' + S.mood + ' / ' + S.hunger + ' / ' + S.hp,
+        'mood/hunger/hp : ' + S.mood + '% / ' + S.hunger + '% / ' + S.hp + '%',
         '조우 ' + ((S.encounters || []).length) + ' · NPC ' + (Object.keys(S.npcs || {}).length) + ' · 아이템 ' + ((S.items || []).length),
         '퀘스트 ' + ((S.quests || []).length) + ' · 비밀 ' + ((S.secrets || []).length) + ' · 알바 ' + ((S.jobs || []).length),
         '─ 최근 로그 ─',
@@ -1843,7 +2007,7 @@ function registerEvents() {
     const ctx = getCtx();
     if (!ctx || !ctx.eventSource) return;
     const types = ctx.eventTypes || ctx.event_types || {};
-    if (types.CHAT_CHANGED) ctx.eventSource.on(types.CHAT_CHANGED, () => { STATE = loadState(); ensureMounted(); renderAll(); refreshMemory(); });
+    if (types.CHAT_CHANGED) ctx.eventSource.on(types.CHAT_CHANGED, () => { STATE = loadState(); lastTouch = Date.now(); isSleeping = false; hungerWarnLevel = -1; ensureMounted(); renderAll(); refreshMemory(); });
     // 자동 출현: 상대 메시지가 올 때마다, 텀(쿨다운) 간격을 지키며 자동으로 조우 1건 생성
     const onMsg = () => {
         if (!EXT.autoDetect || _blBusy) return;
@@ -1861,6 +2025,7 @@ function init() {
         buildConsole(); renderConsole(); applyConsolePos();
         buildSettingsWithRetry(10); buildWandMenuWithRetry(10);
         registerEvents();
+        lastTouch = Date.now(); isSleeping = false;
         startBlink();
         setTimeout(refreshMemory, 1200);
         setTimeout(() => { ensureMounted(); applyConsolePos(); }, 300);
