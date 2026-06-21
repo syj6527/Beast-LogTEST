@@ -126,6 +126,9 @@
 /* ===== 칩/소지품 ===== */
 .bl-jchip { display: inline-block; font-size: 10.5px; padding: 2px 7px; border-radius: 7px; background: var(--bl-card2); border: 1.5px solid var(--bl-line); white-space: nowrap; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
 .bl-jchip.bait { background: #EAF3DC; border-color: #BFD89A; }
+.bl-jchip.bond { background: #fbe9f0; border-color: #e6a8c4; }
+.bl-item-main { flex: 1; display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.bl-item-lore { font-size: 9.5px; color: var(--bl-ink-soft); line-height: 1.4; padding-left: 2px; font-style: italic; }
 .bl-bag-more { font-size: 10px; color: var(--bl-ink-soft); align-self: center; }
 .bl-empty { font-size: 11px; color: var(--bl-ink-soft); padding: 4px 2px; }
 
@@ -373,8 +376,8 @@
 .bl-dex-logrow .num { font-size: 9px; color: var(--bl-ink-soft); margin-right: 5px; }
 
 /* 가방 전체 (삭제 버튼) */
-.bl-item-row { display: flex; align-items: center; gap: 7px; padding: 5px 0; }
-.bl-item-row .bl-jchip { flex: 1; white-space: normal; }
+.bl-item-row { display: flex; align-items: flex-start; gap: 7px; padding: 6px 0; }
+.bl-item-row .bl-jchip { white-space: normal; }
 .bl-item-del { border: none; background: none; cursor: pointer; font-size: 13px; opacity: .65; }
 .bl-item-del:active { transform: scale(.9); }
 
