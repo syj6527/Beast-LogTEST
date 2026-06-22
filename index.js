@@ -1,9 +1,10 @@
-// 🐯 비스트로그 (Beast Log) v0.48.0 — 다마고치 강화: 상태 0~100%(😊기분·🍖배고픔·⚡체력) 통일+표시. 표정: 눈물/자는표정/병아리·판다 전용. 밥: 60%까지 무료+유료메뉴 고정. 작명소(첫 무료/변경 5만). 펫이름 세로배치+진화명병기.
-// 경험치: 레벨곡선 완화(50+lv²×12)+조우exp 2배, 상태별 효율(잘돌볼수록↑), 시비 -3, backfire(18% 역효과). 알바: {{char}}가 직접(그룹/다역 대응), 턴폭발 버그수정. 이벤트체인: 조우·상황 1~3단계.
-// 아이템: RP맥락 기반 드랍(등장소품/로어북/맥락생성)+사연(lore), 희귀도=⚪🟢🔵🟣, bond(💝 {{char}}/{{user}} 연관 깊을수록 귀함). 도감(인물/생물/사물).
+// 🐯 비스트로그 (Beast Log) v0.49.0 — 상태 0~100%(😊기분·🍖배고픔·⚡체력). 표정: 눈물/자는표정/병아리·판다 전용. 밥: 60%까지 무료+유료메뉴 고정. 작명소(첫무료/변경5만). 펫이름 세로배치+진화명병기.
+// 경험치: 레벨곡선 60+lv²×15, 선택별 고정값(협력8/도움6/함께4/기웃2/시비-3), 상태별 효율(잘돌볼수록↑), backfire(18%). 알바: {{char}}가 직접(그룹/1카드 다역 대응).
+// 아이템: RP맥락 드랍(등장소품/로어북/맥락생성)+사연(lore)+떡밥(조우유도), 희귀도⚪🟢🔵🟣, bond(💝 {{char}}/{{user}} 연관 깊을수록 귀함). 도감(인물/생물/사물).
+// v0.49 추가: 캐릭터별 저장(새챗에도 데이터 유지), 턴=자체카운터(시뮬 자동출현 폭발 수정), 자동출현 조우/상황 반반 3~4턴, 목록 미리보기3개+전체보기, {{char}}/{{user}} 매크로 치환.
 // 버전 3곳 동시 갱신: (1) 이 주석, (2) BEASTLOG_VERSION, (3) manifest.json
 
-const BEASTLOG_VERSION = '0.48.0';
+const BEASTLOG_VERSION = '0.49.0';
 const MODULE = 'beast_log';
 let LAST_ERROR = '';
 const DBG_LOG = [];
@@ -23,6 +24,17 @@ function getCtx() {
         ? window.SillyTavern.getContext() : null;
 }
 function blDebug(...a) { if (window.__beastlogDebug) console.log('[비스트로그]', ...a); }
+// {{char}}/{{user}} 매크로를 실제 이름으로 치환 — LLM 출력물 화면에 뿌리기 전에 사용
+function subMacros(s) {
+    if (s == null) return s;
+    const ctx = getCtx();
+    const charName = (ctx && ctx.name2) ? ctx.name2 : '그';
+    const userName = (ctx && ctx.name1) ? ctx.name1 : '나';
+    // SillyTavern의 substituteParams가 있으면 그것도 활용(다른 매크로까지), 없으면 직접 치환
+    let out = String(s);
+    try { if (ctx && typeof ctx.substituteParams === 'function') out = ctx.substituteParams(out); } catch (e) { /* noop */ }
+    return out.replace(/\{\{char\}\}/gi, charName).replace(/\{\{user\}\}/gi, userName);
+}
 function cryptoId() { try { return crypto.randomUUID(); } catch (e) { return 'bl-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8); } }
 function nowHHMM() { try { return new Date().toTimeString().slice(0, 5); } catch (e) { return '--:--'; } }
 function nowDate() { try { const d = new Date(); return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}`; } catch (e) { return '----.--.--'; } }
@@ -45,7 +57,7 @@ const MASCOT_KEYS = Object.keys(MASCOTS);
 // ==== 마스코트 도트 스프라이트 (16x15, 런타임 SVG) ====
 const BL_INK = '#2e2316';
 const BL_SPRITES = {
-  tiger: { w:16, h:15, pal:{O:'#f7b85a',B:'#8f5e30',C:'#fdf3dd'}, rows:['................','..KK........KK..','.KOCK......KCOK.','.KOOOKKKKKKOOOK.','.KOOOOOBBOOOOOK.','.KOOOOBBBBOOOOK.','.KOOOOOBBOOOOOK.','.KOOOOOOOOOOOOK.','.KOOKKOOOOKKOOK.','.KBOKKOOOOKKOBK.','.KBOOOOOOOOOOBK.','.KOOOOCKKCOOOOK.','.KOOOOCCCCOOOOK.','..KKKKCCCCKKKK..','................'] },
+  tiger: { w:16, h:15, pal:{O:'#f6b94d',C:'#fdf6e3',B:'#7a4f28'}, rows:['.KKK.......KKK..','KOCCK.....KOCCK.','KOCCKKKKKKKOCCK.','KOOOOOOBOOOOOOK.','.KOOOOBBBOOOOK..','.KOOOOOBOOOOOK..','KOOOOOOOOOOOOOK.','KBBOOKOOOKOOBBK.','KOOOOKOOOKOOOOK.','KBBOOOOOOOOOBBK.','KOOOOOCKCOOOOOK.','KOOOOCCCCCOOOOK.','.KOOOCCCCCOOOK..','..KKKKKKKKKKK...','................'] },
   cat: { w:16, h:15, pal:{O:'#b0a89c',C:'#f7f2e7',P:'#e99496'}, rows:['................','..KK........KK..','.KOPK......KPOK.','.KOOOKKKKKKOOOK.','.KOOOOOOOOOOOOK.','.KOOOOOOOOOOOOK.','.KOOOOOOOOOOOOK.','.KOOOOOOOOOOOOK.','.KOOKKOOOOKKOOK.','.KOOKKOOOOKKOOK.','.KOOOOOOOOOOOOK.','.KKOOOCPPCOOOKK.','.KOOOOCCCCOOOOK.','..KKKKCCCCKKKK..','................'] },
   dog: { w:16, h:15, pal:{O:'#e6cda2',C:'#f8eed6',D:'#a87a44'}, rows:['................','..KK........KK..','.KODK......KDOK.','.KOOOKKKKKKOOOK.','.KOOOOOOOOOOOOK.','.KOOOOOOOOOOOOK.','.KOOOOOOOOOOOOK.','.KODDOOOOOOOOOK.','.KODKKOOOOKKOOK.','.KOOKKOOOOKKOOK.','.KOOOOOOOOOOOOK.','.KOOOOCKKCOOOOK.','.KOOOOCCCCOOOOK.','..KKKKCCCCKKKK..','................'] },
   hamster: { w:16, h:15, pal:{O:'#e9c468',C:'#fbf3dd',P:'#f2b0a2'}, rows:['................','..KK........KK..','.KOCK......KCOK.','.KOOOKKKKKKOOOK.','.KOOOOOOOOOOOOK.','.KOOOOOOOOOOOOK.','.KOOOOOOOOOOOOK.','.KOOOOOOOOOOOOK.','KOOOKKOOOOKKOOOK','KOPOKKOOOOKKOPOK','KOPPOOOOOOOOPPOK','.KCOOOCKKCOOOCK.','.KOOOOCCCCOOOOK.','..KKKKCCCCKKKK..','................'] },
@@ -56,23 +68,26 @@ const BL_SPRITES = {
   panda: { w:16, h:15, noExpr:true, pal:{O:'#d6d3cd',B:'#2c2725',A:'#ffffff',Y:'#ffffff',P:'#d6d3cd'}, rows:['..BB........BB..','.BABB......BBAB.','.BBBBKKKKKKBBBB.','.KKOOOOOOOOOOKK.','.KOOOOOOOOOOOOK.','.KOBBOOOOOOBBOK.','.KBBBBOOOOBBBBK.','.KBBYBOOOOBYBBK.','.KBBBBOOOOBBBBK.','.KOBBOOOOOOBBOK.','.KPPOOOKKOOOPPK.','.KOOOOKKKKOOOOK.','..KKOOOOOOOOKK..','................','................'] },
 };
 const MONO_INK = new Set(['K', 'B', 'D', 'Y', 'P', 'N']);
-// 표정: 눈 자리(2x2 기본)를 지우고 표정별 픽셀로 다시 그림
-const EYE_BASE = [[4, 8], [5, 8], [4, 9], [5, 9], [10, 8], [11, 8], [10, 9], [11, 9]];
+// 표정: 눈 자리를 지우고 표정별로 다시 그림
+// 디폴트 눈 = 검정 세로 2칸 (왼눈 x5 / 오른눈 x9, y7~8). 호기심만 흰자(C) 추가.
+const EYE_BASE = [[5, 7], [5, 8], [9, 7], [9, 8]];
 const EYE_EXPR = {
-    open:  [[4, 8], [5, 8], [4, 9], [5, 9], [10, 8], [11, 8], [10, 9], [11, 9]],
-    happy: [[5, 8], [4, 9], [6, 9], [10, 8], [9, 9], [11, 9]],            // ^ ^
-    sad:   [[4, 8], [5, 8], [10, 8], [11, 8]],                            // ㅠㅠ 위쪽 눈 + 눈물(EXTRA)
-    tired: [[4, 9], [5, 9], [10, 9], [11, 9]],                            // - -
-    blink: [[4, 9], [5, 9], [6, 9], [9, 9], [10, 9], [11, 9]],            // _ _
-    wink:  [[4, 8], [5, 8], [4, 9], [5, 9], [9, 9], [10, 9], [11, 9]],    // ▣ _
-    regal: [[4, 8], [5, 8], [10, 8], [11, 8]],                           // 내려다보는 눈(윗눈꺼풀)
-    fierce:[[4, 8], [5, 9], [10, 9], [11, 8]],                           // 사나운 눈(빗금)
-    sleep: [[4, 9], [5, 9], [10, 9], [11, 9]],                           // 감은 눈(- -) + zzz(EXTRA)
+    open:  [[5, 7], [5, 8], [9, 7], [9, 8]],                              // 검정 세로 2칸 두 눈
+    happy: [[4, 8], [5, 7], [6, 8], [8, 8], [9, 7], [10, 8]],             // ^ ^ 웃는 눈
+    sad:   [[5, 7], [9, 7]],                                              // 윗눈꺼풀 + 눈물(EXTRA)
+    tired: [[5, 8], [9, 8]],                                              // - - 아래
+    blink: [[4, 8], [5, 8], [6, 8], [8, 8], [9, 8], [10, 8]],             // _ _ 감음
+    wink:  [[5, 7], [5, 8], [8, 8], [9, 8], [10, 8]],                     // ▣ _ 윙크
+    regal: [[5, 7], [9, 7]],                                             // 내려다봄
+    fierce:[[5, 7], [9, 8]],                                             // 사나운 빗금
+    sleep: [[5, 8], [9, 8]],                                             // 감은 눈 + zzz(EXTRA)
+    curious: [[5, 7], [5, 8], [9, 7], [9, 8]],                           // 검정 눈 + 흰자 우상단(EXTRA) — 호기심 ✨
 };
-// 표정별 색상 추가 픽셀 [x, y, color] — 눈물 (몸 위에 덮어그림)
+// 표정별 색상 추가 픽셀 [x, y, color] — 눈물(애니) / 호기심 흰자(고정)
 const TEAR = '#5a9fd6', ZCOL = '#7d9bd6';
 const EYE_EXPR_EXTRA = {
-    sad:  [[4, 9, TEAR], [4, 10, TEAR], [11, 9, TEAR], [11, 10, TEAR]],   // 눈 밑 눈물 줄기 ㅠㅠ
+    sad:  [[5, 8, TEAR], [5, 9, TEAR], [9, 8, TEAR], [9, 9, TEAR]],       // 눈 밑 눈물 ㅠㅠ
+    curious: [[6, 7, '#fdf6e3'], [10, 7, '#fdf6e3']],                    // 눈 우상단 흰자 반짝 ✨
 };
 // 자는 표정 zzz: 큰 Z 두 개를 대각선으로, 머리 위 여백(음수 y)에 그림. overflow:visible로 박스 밖 표시.
 // Z 한 글자 패턴(4×5): 윗가로/대각선/아랫가로
@@ -148,7 +163,9 @@ function spriteSVG(key, size, mono, expr, tier) {
         for (const [x, y] of EYE_EXPR[effExpr]) grid[y][x] = BL_INK;  // 표정 그림
     }
     let tearPixels = null;   // 눈물 픽셀(애니메이션용) — grid에 직접 안 그리고 별도 렌더
-    if (!s.noExpr && effExpr && EYE_EXPR_EXTRA[effExpr]) {             // 색상 추가픽셀(눈물)
+    if (!s.noExpr && effExpr === 'curious' && EYE_EXPR_EXTRA.curious) {   // 호기심 흰자 — grid에 직접(고정)
+        for (const [x, y, col] of EYE_EXPR_EXTRA.curious) grid[y][x] = mono ? BL_INK : col;
+    } else if (!s.noExpr && effExpr && EYE_EXPR_EXTRA[effExpr]) {      // 색상 추가픽셀(눈물 애니)
         tearPixels = EYE_EXPR_EXTRA[effExpr].map(([x, y, col]) => [x, y, mono ? BL_INK : col]);
     }
     // 병아리 전용 표정 (점눈 변형) — 단계 변신(닭) 전에만, mono 아닐 때
@@ -379,10 +396,8 @@ function ownsMascot(k) { return (STATE.owned || []).includes(k); }
 function fmtMoney(n) { return (n || 0).toLocaleString('ko-KR') + '원'; }
 function jobRemaining() {
     const cd = (STATE.jobCD == null ? 3 : STATE.jobCD);
-    const len = getChatLen();
-    let last = (STATE.lastJobTurn == null ? -99 : STATE.lastJobTurn);
-    if (last > len) { last = -99; STATE.lastJobTurn = -99; }   // 새 챗·되돌리기로 길이가 줄면 쿨다운 리셋
-    return Math.max(0, Math.min(cd, cd - (len - last)));        // 최대 cd턴으로 상한 (폭발 방지)
+    const since = (STATE.turnCount || 0) - (STATE.lastJobCount || 0);
+    return Math.max(0, Math.min(cd, cd - since));   // 남은 턴(답장 횟수 기준)
 }
 function canWork() { return jobRemaining() <= 0; }
 function buildJobPrompt() {
@@ -443,12 +458,12 @@ function normalizeJob(o) {
     let pay = parseInt(o.pay, 10); if (!Number.isFinite(pay)) pay = 30000;
     pay = Math.max(0, Math.min(200000, pay));
     return {
-        who: (o.who && o.who !== 'null') ? String(o.who).slice(0, 24) : '',
-        job: String(o.job || '이름 모를 알바').slice(0, 40),
-        report: String(o.report || '시간만 흘렀다.').slice(0, 400),
+        who: (o.who && o.who !== 'null') ? subMacros(String(o.who)).slice(0, 24) : '',
+        job: subMacros(String(o.job || '이름 모를 알바')).slice(0, 40),
+        report: subMacros(String(o.report || '시간만 흘렀다.')).slice(0, 400),
         pay,
-        incident: (o.incident && o.incident !== 'null') ? String(o.incident).slice(0, 160) : null,
-        mood: (o.mood && o.mood !== 'null') ? String(o.mood).slice(0, 120) : '',
+        incident: (o.incident && o.incident !== 'null') ? subMacros(String(o.incident)).slice(0, 160) : null,
+        mood: (o.mood && o.mood !== 'null') ? subMacros(String(o.mood)).slice(0, 120) : '',
     };
 }
 let _blBusy = false;
@@ -470,7 +485,7 @@ function applyJob(job) {
     STATE.jobs = STATE.jobs || [];
     STATE.jobs.unshift(job);
     if (STATE.jobs.length > 30) STATE.jobs.length = 30;
-    STATE.lastJobTurn = getChatLen();
+    STATE.lastJobCount = (STATE.turnCount || 0);
     STATE.jobCD = 2 + Math.floor(Math.random() * 3);   // 다음 알바까지 2~4회 랜덤
     STATE.hunger = clamp0100((STATE.hunger == null ? 80 : STATE.hunger) - 12);   // 알바 → 배고파짐
     if (Math.random() < 0.35) STATE.hp = clamp0100((STATE.hp == null ? 100 : STATE.hp) - 10);   // 가끔 고된 노동 → 체력↓
@@ -543,9 +558,9 @@ function normalizeQuest(o) {
     }
     let reward = null;
     if (rt === 'money') { let m = parseInt(o.reward, 10); reward = Number.isFinite(m) ? Math.max(10000, Math.min(100000, m)) : 30000; }
-    else if (rt === 'item') { reward = String(o.reward || '수상한 물건').slice(0, 30); }
+    else if (rt === 'item') { reward = subMacros(String(o.reward || '수상한 물건')).slice(0, 30); }
     else if (rt === 'xp') { let x = parseInt(o.reward, 10); reward = Number.isFinite(x) ? Math.max(10, Math.min(40, x)) : (10 + Math.floor(Math.random() * 31)); }
-    return { id: cryptoId(), goal: String(o.goal || '뭔가 해내기').slice(0, 140), emoji: String(o.emoji || '🎯').slice(0, 4), rewardType: rt, reward, time: nowHHMM() };
+    return { id: cryptoId(), goal: subMacros(String(o.goal || '뭔가 해내기')).slice(0, 140), emoji: String(o.emoji || '🎯').slice(0, 4), rewardType: rt, reward, time: nowHHMM() };
 }
 async function onNewQuest() {
     if (_blBusy) return;
@@ -581,7 +596,7 @@ function completeQuest(q, secretText) {
     if (q.rewardType === 'money') { STATE.money = (STATE.money || 0) + q.reward; rewardMsg = `💰 ${fmtMoney(q.reward)} 획득`; }
     else if (q.rewardType === 'item') { STATE.items.unshift({ id: cryptoId(), name: q.reward, emoji: '🎁', rarity: 'common', itemType: null, price: 0 }); if (STATE.items.length > 80) STATE.items.length = 80; rewardMsg = `🎁 '${q.reward}' 획득`; }
     else if (q.rewardType === 'xp') { const x = q.reward || 20; STATE.xp = (STATE.xp || 0) + x; levelCheck(); rewardMsg = `⭐ 경험치 +${x}`; }
-    else { const sec = String(secretText || '…사실 별 거 아니었다').slice(0, 140); STATE.secrets = STATE.secrets || []; STATE.secrets.unshift({ id: cryptoId(), text: sec, goal: q.goal, time: nowHHMM() }); if (STATE.secrets.length > 50) STATE.secrets.length = 50; rewardMsg = `🔒 ${sec}`; }
+    else { const sec = subMacros(String(secretText || '…사실 별 거 아니었다')).slice(0, 140); STATE.secrets = STATE.secrets || []; STATE.secrets.unshift({ id: cryptoId(), text: sec, goal: q.goal, time: nowHHMM() }); if (STATE.secrets.length > 50) STATE.secrets.length = 50; rewardMsg = `🔒 ${sec}`; }
     STATE.quests = (STATE.quests || []).filter(x => x.id !== q.id);
     saveState(STATE); renderAll();
     showQuestDone(q, rewardMsg, q.rewardType === 'secret' ? 'secret' : '');
@@ -711,6 +726,7 @@ function defaultState() {
         quests: [], secrets: [],
         pins: [],
         lastInjectTurn: -99, lastHungerDecay: Date.now(), pendingFeed: null,
+        turnCount: 0, lastInjectCount: 0, lastJobCount: 0,
         statScale: 100,
         settings: { injectDefault: false, hungerWarn: true },
     };
@@ -830,13 +846,11 @@ function resetAll() {
 function getChatLen() { const c = getCtx(); return (c && Array.isArray(c.chat)) ? c.chat.length : 0; }
 function injectRemaining() {
     const cd = (STATE.injectCD == null ? 3 : STATE.injectCD);
-    const len = getChatLen();
-    let last = (STATE.lastInjectTurn == null ? -99 : STATE.lastInjectTurn);
-    if (last > len) { last = len; STATE.lastInjectTurn = len; }   // 새 챗·되돌리기로 길이 줄면 리셋(지금부터 다시 셈)
-    return Math.max(0, Math.min(cd, cd - (len - last)));           // 최대 cd턴 상한 (폭발 방지)
+    const since = (STATE.turnCount || 0) - (STATE.lastInjectCount || 0);
+    return Math.max(0, Math.min(cd, cd - since));   // 남은 턴(답장 횟수 기준)
 }
 function canInject() { return injectRemaining() <= 0; }
-function markInject() { STATE.lastInjectTurn = getChatLen(); STATE.injectCD = 3 + Math.floor(Math.random() * 2); saveState(STATE); renderAll(); }
+function markInject() { STATE.lastInjectCount = (STATE.turnCount || 0); STATE.injectCD = 3 + Math.floor(Math.random() * 2); saveState(STATE); renderAll(); }
 function getProfiles() {
     const ctx = getCtx();
     const cm = (ctx && ctx.extensionSettings && ctx.extensionSettings.connectionManager) || null;
@@ -1057,21 +1071,21 @@ function normalizeBeat(o) {
     let ch = Array.isArray(o.choices) ? o.choices.slice(0, 4) : [];
     ch = ch.filter(c => c && c.label).map(c => ({ label: String(c.label), kind: VALID_KINDS.includes(c.kind) ? c.kind : 'interact' }));
     if (!ch.length) ch = [{ label: '계속 지켜본다', kind: 'interact' }, { label: '물러난다', kind: 'flee' }];
-    return { beat: String(o.beat || '상황이 한 박자 더 이어진다.'), choices: ch };
+    return { beat: subMacros(String(o.beat || '상황이 한 박자 더 이어진다.')), choices: ch };
 }
 function normalizeEvent(o, cat) {
     o = o || {};
     let choices = Array.isArray(o.choices) ? o.choices.slice(0, 4) : [];
-    choices = choices.filter(c => c && c.label).map(c => ({ label: String(c.label), kind: VALID_KINDS.includes(c.kind) ? c.kind : 'interact' }));
+    choices = choices.filter(c => c && c.label).map(c => ({ label: subMacros(String(c.label)), kind: VALID_KINDS.includes(c.kind) ? c.kind : 'interact' }));
     if (!choices.length) choices = [{ label: '대응한다', kind: 'interact' }, { label: '지나친다', kind: 'flee' }];
     return {
         category: o.category === 'situation' ? 'situation' : cat,
         emoji: String(o.emoji || (cat === 'situation' ? '🌦️' : '❓')).slice(0, 4),
-        title: String(o.title || (cat === 'situation' ? '무언가 일어났다' : '무언가 나타났다')),
-        foe: (o.foe && o.foe !== 'null') ? String(o.foe) : null,
+        title: subMacros(String(o.title || (cat === 'situation' ? '무언가 일어났다' : '무언가 나타났다'))),
+        foe: (o.foe && o.foe !== 'null') ? subMacros(String(o.foe)) : null,
         foeType: ['person', 'creature', 'object'].includes(o.foeType) ? o.foeType : 'creature',
-        desc: o.desc ? String(o.desc) : '',
-        place: (o.place && o.place !== 'null') ? String(o.place).slice(0, 24) : '',
+        desc: o.desc ? subMacros(String(o.desc)) : '',
+        place: (o.place && o.place !== 'null') ? subMacros(String(o.place)).slice(0, 24) : '',
         env: Array.isArray(o.env) ? o.env.map(s => String(s).replace(/[#\s]/g, '').slice(0, 12)).filter(Boolean).slice(0, 5) : [],
         choices,
     };
@@ -1084,23 +1098,23 @@ function normalizeOutcome(o, kind) {
     if (kind === 'attack') exp = -3;   // 나쁜 선택(시비)은 항상 경험치 손해
     // 드랍 결정: LLM이 준 게 있으면 그걸, 없으면 — loot(주움)은 항상, 그 외엔 확률로 보완
     let drop = (o.drop && o.drop.name)
-        ? { name: String(o.drop.name).slice(0, 40), emoji: String(o.drop.emoji || '📦'), price: o.drop.price || 0, bond: Math.max(0, Math.min(3, parseInt(o.drop.bond, 10) || 0)), lore: (o.drop.lore && o.drop.lore !== 'null') ? String(o.drop.lore).slice(0, 120) : '' }
+        ? { name: subMacros(String(o.drop.name)).slice(0, 40), emoji: String(o.drop.emoji || '📦'), price: o.drop.price || 0, bond: Math.max(0, Math.min(3, parseInt(o.drop.bond, 10) || 0)), lore: (o.drop.lore && o.drop.lore !== 'null') ? subMacros(String(o.drop.lore)).slice(0, 120) : '' }
         : null;
     if (!drop && kind !== 'attack' && kind !== 'flee') {
         const chance = (kind === 'loot') ? 1 : 0.25;   // 주움은 100%, 그 외 25%
         if (Math.random() < chance) drop = Object.assign({ bond: 0, lore: '' }, pick(FALLBACK_DROPS));   // 폴백 잡템은 관련 없음
     }
     return {
-        result: String(o.result || '결과'),
-        summary: (o.summary && o.summary !== 'null') ? String(o.summary).slice(0, 40) : null,
+        result: subMacros(String(o.result || '결과')),
+        summary: (o.summary && o.summary !== 'null') ? subMacros(String(o.summary)).slice(0, 40) : null,
         exp,
         rep: Number.isFinite(o.rep) ? o.rep : 0,
         affDelta: Number.isFinite(o.affDelta) ? o.affDelta : affinityDelta(kind),
         drop,
-        inner: { foe: String((o.inner && o.inner.foe) || '별일 없었던 것 같다.'), user: String((o.inner && o.inner.user) || '당신도 잘 모르겠을 것이다.') },
-        after: (o.after && o.after !== 'null') ? String(o.after) : null,
-        npcMemory: (o.npcMemory && o.npcMemory !== 'null') ? String(o.npcMemory) : null,
-        npcState: (o.npcState && o.npcState !== 'null') ? String(o.npcState) : null,
+        inner: { foe: subMacros(String((o.inner && o.inner.foe) || '별일 없었던 것 같다.')), user: subMacros(String((o.inner && o.inner.user) || '당신도 잘 모르겠을 것이다.')) },
+        after: (o.after && o.after !== 'null') ? subMacros(String(o.after)) : null,
+        npcMemory: (o.npcMemory && o.npcMemory !== 'null') ? subMacros(String(o.npcMemory)) : null,
+        npcState: (o.npcState && o.npcState !== 'null') ? subMacros(String(o.npcState)) : null,
     };
 }
 function handleLlmError(err) {
@@ -1198,7 +1212,7 @@ function gainXp(amount) {
     STATE.xp += amount;   // 음수(나쁜 선택 벌점)는 그대로
     return 1;
 }
-function levelNeed(lv) { return Math.round(50 + lv * lv * 12); }   // 제곱 곡선(완화): 초반 빠르고 후반 묵직, 체감 적절
+function levelNeed(lv) { return Math.round(60 + lv * lv * 15); }   // 제곱 곡선(약 20% 상향): 렙업 살짝 천천히
 function levelCheck() {
     let need = levelNeed(STATE.level);
     while (STATE.xp >= need) { STATE.xp -= need; STATE.level += 1; flash(`⭐ 레벨업! Lv.${STATE.level}`); need = levelNeed(STATE.level); }
@@ -1358,8 +1372,10 @@ function sitLine() {
 }
 function itemChip(it) {
     const bondMark = (it.bond >= 2) ? '💝 ' : '';   // {{char}}/{{user}}와 인연 깊은 물건
-    const tip = it.lore ? ` title="${escapeHtml(it.lore)}"` : '';
-    return `<span class="bl-jchip${it.itemType === 'bait' ? ' bait' : ''}${it.bond >= 2 ? ' bond' : ''}"${tip}>${it.itemType === 'bait' ? '🎣 ' : ''}${bondMark}${RARITY[it.rarity] ? RARITY[it.rarity].dot : ''} ${it.emoji || '📦'} ${escapeHtml(it.name)}</span>`;
+    const nm = subMacros(it.name || '');             // 기존에 매크로로 저장된 것도 화면에선 치환
+    const loreTxt = it.lore ? subMacros(it.lore) : '';
+    const tip = loreTxt ? ` title="${escapeHtml(loreTxt)}"` : '';
+    return `<span class="bl-jchip${it.itemType === 'bait' ? ' bait' : ''}${it.bond >= 2 ? ' bond' : ''}"${tip}>${it.itemType === 'bait' ? '🎣 ' : ''}${bondMark}${RARITY[it.rarity] ? RARITY[it.rarity].dot : ''} ${it.emoji || '📦'} ${escapeHtml(nm)}</span>`;
 }
 function bagPreviewHtml(limit) {
     if (!STATE.items.length) return '<div class="bl-empty">텅 비었다</div>';
@@ -1877,7 +1893,7 @@ function renderFull() {
     const itemShow = (listView === 'bag') ? itemAll : itemAll.slice(0, PREVIEW_N);
     fullEl.querySelector('.bl-junk-cnt').textContent = itemAll.length + '개';
     fullEl.querySelector('.bl-junk-list').innerHTML = itemAll.length
-        ? itemShow.map(it => `<div class="bl-item-row"><div class="bl-item-main">${itemChip(it)}${it.lore ? `<div class="bl-item-lore">${escapeHtml(it.lore)}</div>` : ''}</div>${pinBtn('item:' + it.id)}<button class="bl-item-del" data-id="${it.id}" title="버리기">🗑️</button></div>`).join('') + moreBtn('bag', itemAll.length)
+        ? itemShow.map(it => `<div class="bl-item-row"><div class="bl-item-main">${itemChip(it)}${it.lore ? `<div class="bl-item-lore">${escapeHtml(subMacros(it.lore))}</div>` : ''}</div>${pinBtn('item:' + it.id)}<button class="bl-item-del" data-id="${it.id}" title="버리기">🗑️</button></div>`).join('') + moreBtn('bag', itemAll.length)
         : '<div class="bl-empty">텅 비었다.</div>';
 }
 // 전체보기/접기 버튼 — 미리보기 모드에서 항목이 더 있으면 "전체보기", 전체보기 모드면 "접기"
@@ -2067,6 +2083,7 @@ function startEncounter(item) {
 }
 function showChoicePopup(item, chain) {
     closePopup();
+    if (!isSleeping) setMascotEls('curious');   // 새로운 만남 → 호기심 눈 ✨
     chain = chain || { stage: 1, max: 1, history: [], origItem: item };
     const cat = item.category || 'npc';
     const choices = (item.choices && item.choices.length) ? item.choices : [{ label: '대응한다', kind: 'interact' }, { label: '지나친다', kind: 'flee' }];
@@ -2346,10 +2363,15 @@ function registerEvents() {
     // 자동 출현: 상대 메시지가 올 때마다, 텀(쿨다운) 간격을 지키며 자동으로 조우 1건 생성
     const onMsg = () => {
         noteTouch();   // 채팅이 오가면 졸음에서 깸 + 잠 타이머 리셋
-        if (!EXT.autoDetect || _blBusy) return;
-        if (getChatLen() < 2) return;   // 새 챗 첫 인사말 단계에선 자동출현 안 함
-        if (!canInject()) return;
-        markInject();
+        STATE.turnCount = (STATE.turnCount || 0) + 1;   // 답장 받을 때마다 +1 (채팅 길이와 무관 → 시뮬·되돌리기 영향 없음)
+        if (!EXT.autoDetect || _blBusy) { saveState(STATE); return; }
+        if (getChatLen() < 2) { saveState(STATE); return; }   // 새 챗 첫 인사말 단계엔 자동출현 안 함
+        const since = STATE.turnCount - (STATE.lastInjectCount || 0);
+        const cd = (STATE.injectCD == null ? 3 : STATE.injectCD);
+        if (since < cd) { saveState(STATE); return; }   // 아직 쿨다운
+        STATE.lastInjectCount = STATE.turnCount;
+        STATE.injectCD = 3 + Math.floor(Math.random() * 2);   // 다음 간격 3~4
+        saveState(STATE); renderAll();
         // 조우/상황 랜덤 (반반)
         const fn = Math.random() < 0.5 ? onAppear : onSituation;
         setTimeout(() => { if (EXT.autoDetect && !_blBusy) fn(); }, 700);
