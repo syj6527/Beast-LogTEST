@@ -1,10 +1,11 @@
-// 🐯 비스트로그 (Beast Log) v0.49.0 — 상태 0~100%(😊기분·🍖배고픔·⚡체력). 표정: 눈물/자는표정/병아리·판다 전용. 밥: 60%까지 무료+유료메뉴 고정. 작명소(첫무료/변경5만). 펫이름 세로배치+진화명병기.
+// 🐯 비스트로그 (Beast Log) v0.50.0 — 상태 0~100%(😊기분·🍖배고픔·⚡체력). 표정: 눈물/자는표정/병아리·판다 전용. 밥: 60%까지 무료+유료메뉴 고정. 작명소(첫무료/변경5만). 펫이름 세로배치+진화명병기.
 // 경험치: 레벨곡선 60+lv²×15, 선택별 고정값(협력8/도움6/함께4/기웃2/시비-3), 상태별 효율(잘돌볼수록↑), backfire(18%). 알바: {{char}}가 직접(그룹/1카드 다역 대응).
 // 아이템: RP맥락 드랍(등장소품/로어북/맥락생성)+사연(lore)+떡밥(조우유도), 희귀도⚪🟢🔵🟣, bond(💝 {{char}}/{{user}} 연관 깊을수록 귀함). 도감(인물/생물/사물).
 // v0.49 추가: 캐릭터별 저장(새챗에도 데이터 유지), 턴=자체카운터(시뮬 자동출현 폭발 수정), 자동출현 조우/상황 반반 3~4턴, 목록 미리보기3개+전체보기, {{char}}/{{user}} 매크로 치환.
+// v0.50 추가: 마스코트 9종 전면 재디자인 + 표정시스템 정비(호기심/병아리·판다·토끼 전용), 진화 3단계 색/디테일 갱신(백호왕관·구미호·손오공머리띠·현자단안경·도사판다 등), 🎰 즉석복권(깽판 알바 보완책 — 알바비≤1.5만 해금, 1천원/장, 알바당 3장, 꽝90%, {{char}}보이스).
 // 버전 3곳 동시 갱신: (1) 이 주석, (2) BEASTLOG_VERSION, (3) manifest.json
 
-const BEASTLOG_VERSION = '0.49.0';
+const BEASTLOG_VERSION = '0.50.0';
 const MODULE = 'beast_log';
 let LAST_ERROR = '';
 const DBG_LOG = [];
@@ -58,14 +59,14 @@ const MASCOT_KEYS = Object.keys(MASCOTS);
 const BL_INK = '#2e2316';
 const BL_SPRITES = {
   tiger: { w:16, h:15, pal:{O:'#f6b94d',C:'#fdf6e3',B:'#7a4f28'}, rows:['.KKK.......KKK..','KOCCK.....KOCCK.','KOCCKKKKKKKOCCK.','KOOOOOOBOOOOOOK.','.KOOOOBBBOOOOK..','.KOOOOOBOOOOOK..','KOOOOOOOOOOOOOK.','KBBOOKOOOKOOBBK.','KOOOOKOOOKOOOOK.','KBBOOOOOOOOOBBK.','KOOOOOCKCOOOOOK.','KOOOOCCCCCOOOOK.','.KOOOCCCCCOOOK..','..KKKKKKKKKKK...','................'] },
-  cat: { w:16, h:15, pal:{O:'#b0a89c',C:'#f7f2e7',P:'#e99496'}, rows:['................','..KK........KK..','.KOPK......KPOK.','.KOOOKKKKKKOOOK.','.KOOOOOOOOOOOOK.','.KOOOOOOOOOOOOK.','.KOOOOOOOOOOOOK.','.KOOOOOOOOOOOOK.','.KOOKKOOOOKKOOK.','.KOOKKOOOOKKOOK.','.KOOOOOOOOOOOOK.','.KKOOOCPPCOOOKK.','.KOOOOCCCCOOOOK.','..KKKKCCCCKKKK..','................'] },
-  dog: { w:16, h:15, pal:{O:'#e6cda2',C:'#f8eed6',D:'#a87a44'}, rows:['................','..KK........KK..','.KODK......KDOK.','.KOOOKKKKKKOOOK.','.KOOOOOOOOOOOOK.','.KOOOOOOOOOOOOK.','.KOOOOOOOOOOOOK.','.KODDOOOOOOOOOK.','.KODKKOOOOKKOOK.','.KOOKKOOOOKKOOK.','.KOOOOOOOOOOOOK.','.KOOOOCKKCOOOOK.','.KOOOOCCCCOOOOK.','..KKKKCCCCKKKK..','................'] },
-  hamster: { w:16, h:15, pal:{O:'#e9c468',C:'#fbf3dd',P:'#f2b0a2'}, rows:['................','..KK........KK..','.KOCK......KCOK.','.KOOOKKKKKKOOOK.','.KOOOOOOOOOOOOK.','.KOOOOOOOOOOOOK.','.KOOOOOOOOOOOOK.','.KOOOOOOOOOOOOK.','KOOOKKOOOOKKOOOK','KOPOKKOOOOKKOPOK','KOPPOOOOOOOOPPOK','.KCOOOCKKCOOOCK.','.KOOOOCCCCOOOOK.','..KKKKCCCCKKKK..','................'] },
-  chick: { w:16, h:15, noExpr:true, pal:{O:'#f6d442',Y:'#ee882a',E:'#fbf3e0',e:'#e6d8b8'}, rows:['................','......KKKK......','....KKOOOOKK....','...KOOOOOOOOK...','..KOOKKOOKKOOK..','..KOOKKOOKKOOK..','..KOOOOYYOOOOK..','..KOOOOOOOOOOK..','.KEKEKKEEKKEKEK.','.KEEEEEEEEEEEEK.','.KEEEEEEEEEEEEK.','.KEEEeeeeeeEEEK.','..KEEEEEEEEEEK..','...KKEEEEEEKK...','.....KKKKKK.....'] },
-  rabbit: { w:16, h:15, pal:{O:'#fbfbf7',P:'#f3a6a6'}, rows:['..KKK......KKK..','.KOPK......KPOK.','.KOPK......KPOK.','.KOPK......KPOK.','.KOOK......KOOK.','.KOOKKKKKKKKOOK.','.KOOOOOOOOOOOOK.','.KOOOOOOOOOOOOK.','.KOOKKOOOOKKOOK.','.KOOKKOOOOKKOOK.','.KOOOOOOOOOOOOK.','.KPOOOOKKOOOOPK.','.KOOOOOOOOOOOOK.','..KKKKKKKKKKKK..','................'] },
-  monkey: { w:16, h:15, eyeBg:'C', pal:{O:'#c49c6e',C:'#f7ebce'}, rows:['................','...KKKKKKKKKK...','..KOOOOOOOOOOK..','.KOOOOOOOOOOOOK.','.KOOOOOOOOOOOOK.','KKOOCCCCCCCCOOKK','KOKOCCCCCCCCOKOK','KKOCCCCCCCCCCOKK','.KOCKKCCCCKKCOK.','.KOCKKCCCCKKCOK.','.KOCCCCCCCCCCOK.','.KOCCCKKKKCCCOK.','.KOOCCCCCCCCOOK.','..KKOOOOOOOOKK..','...KKKKKKKKKK...'] },
-  fox: { w:16, h:15, pal:{O:'#f0a860',C:'#fdf3e6'}, rows:['..KK........KK..','.KOK........KOK.','.KOOK......KOOK.','.KOOOKKKKKKOOOK.','.KOOOOOOOOOOOOK.','.KOOOOOOOOOOOOK.','.KOOOOOOOOOOOOK.','.KOOOOOOOOOOOOK.','.KOOKKOOOOKKOOK.','.KCOKKOOOOKKOCK.','.KCCOOOOOOOOCCK.','.KCCCCOOOOCCCCK.','.KCCCCCKKCCCCCK.','..KKCCCCCCCCKK..','................'] },
-  panda: { w:16, h:15, noExpr:true, pal:{O:'#d6d3cd',B:'#2c2725',A:'#ffffff',Y:'#ffffff',P:'#d6d3cd'}, rows:['..BB........BB..','.BABB......BBAB.','.BBBBKKKKKKBBBB.','.KKOOOOOOOOOOKK.','.KOOOOOOOOOOOOK.','.KOBBOOOOOOBBOK.','.KBBBBOOOOBBBBK.','.KBBYBOOOOBYBBK.','.KBBBBOOOOBBBBK.','.KOBBOOOOOOBBOK.','.KPPOOOKKOOOPPK.','.KOOOOKKKKOOOOK.','..KKOOOOOOOOKK..','................','................'] },
+  cat: { w:16, h:15, pal:{C:'#fde8d0',O:'#f5933a',X:'#ff80c3',M:'#fde8d0'}, rows:['..KK.......KK...','..KCK.....KCK...','..KCOK...KOCK...','.KOOOKKKKKOOOK..','.KOOOOOOOOOOOK..','.KOOOOOOOOOOOK..','KOOOOOOOOOOOOOK.','KOOOOKOOOKOOOOK.','KOOOOKOOOKOOOOK.','KOOOOOOOOOOOOOK.','KOOOOOMXMOOOOOK.','KOOOOMMMMMOOOOK.','.KOOOMMMMMOOOK..','..KKKKKKKKKKK...','................'] },
+  dog: { w:16, h:15, pal:{O:'#f6b94d',B:'#7a4f28',C:'#fdf6e3'}, rows:['.KKK.......KKK..','KOOOK.....KOOOK.','KOOOKKKKKKKOOOK.','KKKOOOOOOOOOKKK.','.KOOOOOOOOOOOK..','.KOOOOOOOOOOOK..','KOOOBBOOOOOOOOK.','KOOOBKOOOKOOOOK.','KOOOOKOOOKOOOOK.','KOOOOOOOOOOOOOK.','KOOOOOCKCOOOOOK.','KOOOOCCCCCOOOOK.','.KOOOCCCCCOOOK..','..KKKKKKKKKKK...','................'] },
+  hamster: { w:16, h:15, pal:{C:'#fdf6e3',O:'#f6b94d'}, rows:['................','..KKK.....KKK...','.KCCOK...KOCCK..','.KCOOOKKKOOOCK..','.KOOOOOOOOOOOK..','.KOOOOOOOOOOOK..','.KOOOOOOOOOOOK..','KOOOOKOOOKOOOOK.','KOOOOKOOOKOOOOK.','KOOOOCCKCCOOOOK.','KOOOCCCCCCCOOOK.','.KOOCCCCCCCOOK..','..KCCCCCCCCCK...','...KKKKKKKKK....','................'] },
+  chick: { w:16, h:15, pal:{X:'#ffed24',O:'#f6b94d',C:'#fdf6e3'}, rows:['....KKKKKKK.....','...KXXXXXXXK....','..KXXXXXXXXXK...','.KXXXKXXXKXXXK..','.KXXXKXXXKXXXK..','.KXXXXXOXXXXXK..','KKXXXXXXXXXXXKK.','KKKXKKKKKXKKXKK.','KCCKCCCCCKCCKCK.','KCCCCCCCCCCCCCK.','KCCCCCCCCCCCCCK.','KCCCCCCCCCCCCCK.','.KCCCCCCCCCCCK..','..KKKKKKKKKKK...','................'] },
+  rabbit: { w:16, h:15, pal:{C:'#fdf6e3',X:'#ffa0d0'}, rows:['...KK.....KK....','..KCXK...KXCK...','..KCXK...KXCK...','..KCXK...KXCK...','..KCCK...KCCK...','..KCCCKKKCCCK...','.KCCCCCCCCCCCK..','.KCCCCCCCCCCCK..','.KCCCKCCCKCCCK..','.KCCCKCCCKCCCK..','.KCCCCCXCCCCCK..','.KCCCCCCCCCCCK..','..KCCCCCCCCCK...','...KKKKKKKKK....','................'] },
+  monkey: { w:16, h:15, eyeBg:'C', pal:{B:'#7a4f28',C:'#fdf6e3'}, rows:['................','....KKKKKKK.....','...KBBBBBBBK....','..KBBBBBBBBBK...','.KBBBBBBBBBBBK..','.KBBBCCCCCBBBK..','KKKBCCCCCCCBKKK.','KCBCCKCCCKCCBCK.','KCBCCKCCCKCCBCK.','KCBCCCCCCCCCBCK.','KKBCCCCKCCCCBKK.','.KBBCCCCCCCBBK..','..KBBBBBBBBBK...','...KKKKKKKKK....','................'] },
+  fox: { w:16, h:15, pal:{C:'#fdf6e3',X:'#fb6413'}, rows:['..KK.......KK...','.KCK.......KCK..','.KXXK.....KXXK..','.KXXXKKKKKXXXK..','.KXXXXXXXXXXXK..','.KXXXXXXXXXXXK..','.KXXXXXXXXXXXK..','KXXXXKXXXKXXXXK.','KXXXXKXXXKXXXXK.','KXXXXXXXXXXXXXK.','KXXXXXCKCXXXXXK.','.KXXXCCCCCXXXK..','..KKCCCCCCCKK...','...KKKKKKKKK....','................'] },
+  panda: { w:16, h:15, noExpr:true, pal:{C:'#fdf6e3'}, rows:['.KKK.......KKK..','KKKKK.....KKKKK.','KKKKKKKKKKKKKKK.','KKKKCCCCCCCKKKK.','.KKCCCCCCCCCKK..','..KCCCCCCCCCK...','.KCCKKCCCKKCCK..','.KCKKCKCKCKKCK..','KCKKKKKCKKKKKCK.','KCKKKKCCCKKKKCK.','KCCKKCCKCCKKCCK.','KCCCCCCCCCCCCCK.','.KCCCCCCCCCCCK..','..KKKKKKKKKKK...','................'] },
 };
 const MONO_INK = new Set(['K', 'B', 'D', 'Y', 'P', 'N']);
 // 표정: 눈 자리를 지우고 표정별로 다시 그림
@@ -79,16 +80,29 @@ const EYE_EXPR = {
     blink: [[4, 8], [5, 8], [6, 8], [8, 8], [9, 8], [10, 8]],             // _ _ 감음
     wink:  [[5, 7], [5, 8], [8, 8], [9, 8], [10, 8]],                     // ▣ _ 윙크
     regal: [[5, 7], [9, 7]],                                             // 내려다봄
-    fierce:[[5, 7], [9, 8]],                                             // 사나운 빗금
-    sleep: [[5, 8], [9, 8]],                                             // 감은 눈 + zzz(EXTRA)
-    curious: [[5, 7], [5, 8], [9, 7], [9, 8]],                           // 검정 눈 + 흰자 우상단(EXTRA) — 호기심 ✨
+    fierce:[[4, 7], [5, 8], [9, 8], [10, 7]],                            // \ / 사나운 눈썹(위엄)
+    sleep: [[4, 8], [5, 8], [6, 8], [8, 8], [9, 8], [10, 8]],            // 감은 눈 - - (넓은 일자) + zzz(EXTRA)
+    curious: [[4, 7], [4, 8], [5, 8], [9, 7], [9, 8], [10, 8]],          // 검정 3칸 + 흰자(EXTRA) — 호기심 ✨ (사용자 원본)
 };
 // 표정별 색상 추가 픽셀 [x, y, color] — 눈물(애니) / 호기심 흰자(고정)
 const TEAR = '#5a9fd6', ZCOL = '#7d9bd6';
 const EYE_EXPR_EXTRA = {
     sad:  [[5, 8, TEAR], [5, 9, TEAR], [9, 8, TEAR], [9, 9, TEAR]],       // 눈 밑 눈물 ㅠㅠ
-    curious: [[6, 7, '#fdf6e3'], [10, 7, '#fdf6e3']],                    // 눈 우상단 흰자 반짝 ✨
+    curious: [[5, 7, '#fdf6e3'], [10, 7, '#fdf6e3']],                    // 흰자 ✨ (왼눈 x5위, 오른눈 x10위)
 };
+// 토끼 전용 표정 (눈 1픽셀 아래: x5,x9 / y8~9). 일반 동물보다 한 칸 낮음.
+const RABBIT_EYE_BASE = [[5,8],[5,9],[9,8],[9,9]];
+const RABBIT_EXPR = {
+    open:  [[5,8],[5,9],[9,8],[9,9]],
+    happy: [[4,9],[5,8],[6,9],[8,9],[9,8],[10,9]],
+    sad:   [[5,8],[9,8]],
+    tired: [[5,9],[9,9]],
+    blink: [[4,9],[5,9],[6,9],[8,9],[9,9],[10,9]],
+    sleep: [[4,9],[5,9],[6,9],[8,9],[9,9],[10,9]],
+    curious: [[4,8],[4,9],[5,9],[9,8],[9,9],[10,9]],
+};
+const RABBIT_TEAR = [[5,9,TEAR],[5,10,TEAR],[9,9,TEAR],[9,10,TEAR]];
+const RABBIT_CURIOUS_WHITE = [[5,8,'#fdf6e3'],[10,8,'#fdf6e3']];
 // 자는 표정 zzz: 큰 Z 두 개를 대각선으로, 머리 위 여백(음수 y)에 그림. overflow:visible로 박스 밖 표시.
 // Z 한 글자 패턴(4×5): 윗가로/대각선/아랫가로
 const Z_PATTERN = [[0,0],[1,0],[2,0],[3,0], [2,1], [1,2], [0,3], [0,4],[1,4],[2,4],[3,4]];
@@ -98,41 +112,47 @@ const SLEEP_ZS = [
     { ox: 13, oy: -4.5, sz: 0.85, cls: 'bl-z2' },     // 큰 Z (대각선 위)
 ];
 // 병아리 전용 표정 (점눈: 왼 x5,6 / 오른 x9,10, y4,5). base를 몸색으로 지우고 표정 픽셀
-const CHICK_EYE_BASE = [[5,4],[6,4],[5,5],[6,5],[9,4],[10,4],[9,5],[10,5]];
+// 병아리 전용 표정 (눈: 기본 x5,x9 세로 y3~4). 사용자가 직접 그린 좌표.
+const CHICK_EYE_BASE = [[4,3],[5,3],[4,4],[5,4],[9,3],[10,3],[9,4],[10,4]];
 const CHICK_EXPR = {
-    happy: [[5,5],[6,4],[9,4],[10,5]],          // ^ ^
-    sad:   [[5,4],[6,4],[9,4],[10,4]],          // 윗눈 + 눈물(EXTRA)
-    tired: [[5,5],[6,5],[9,5],[10,5]],          // 일자 - -
-    sleep: [[5,5],[6,5],[9,5],[10,5]],          // 감은 - -
+    open:  [[5,3],[5,4],[9,3],[9,4]],            // 검정 세로 2칸
+    happy: [[5,3],[4,4],[6,4],[9,3],[8,4],[10,4]],  // ^ ^ 웃는 눈 (사용자 그림)
+    sad:   [[5,3],[9,3]],                        // 윗눈 + 눈물(EXTRA)
+    tired: [[5,4],[9,4]],                        // - -
+    blink: [[4,4],[5,4],[9,4],[10,4]],           // _ _
+    sleep: [[4,4],[5,4],[9,4],[10,4]],           // 졸린 긴 눈 (사용자 그림)
+    curious: [[4,3],[4,4],[5,4],[9,3],[9,4],[10,4]], // 검정 + 흰자(EXTRA) — 사용자 그림
 };
-const CHICK_TEAR = [[5,6,TEAR],[10,6,TEAR]];
+const CHICK_TEAR = [[5,5,TEAR],[9,5,TEAR]];
+const CHICK_CURIOUS_WHITE = [[5,3,'#fdf6e3'],[10,3,'#fdf6e3']];  // 흰자: 왼눈 x5y3, 오른눈 x10y3
 // 판다 전용 표정 (흰자 Y: 왼 x4y7, 오른 x11y7). 흰자를 눈두덩(B) 안에서 이동
-const PANDA_EYE_BASE = [[4,7],[11,7]];
-const PANDA_EXPR = {        // [x, y] (정수). 흰자를 옮길 위치
-    happy: [[4,6],[11,6]],          // 위로 → 초승달 눈웃음
-    sad:   [[4,8],[11,8]],          // 아래로 → 처진 눈 + 눈물(EXTRA)
-    // tired / sleep은 반픽셀(중앙 고정) — 별도 처리, sleep은 zzz 추가
+// 판다 전용 표정 — 표정별 전체 rows (사용자가 직접 그림). 눈 영역만 다름.
+const PANDA_FACE = {
+    happy:   ['.KKK.......KKK..','KKKKK.....KKKKK.','KKKKKKKKKKKKKKK.','KKKKCCCCCCCKKKK.','.KKCCCCCCCCCKK..','..KCCCCCCCCCK...','.KCCKKCCCKKCCK..','.KCKCKKCKKCKCK..','KCKCKCKCKCKCKCK.','KCKKKKCCCKKKKCK.','KCCKKCCKCCKKCCK.','KCCCCCCCCCCCCCK.','.KCCCCCCCCCCCK..','..KKKKKKKKKKK...','................'],
+    curious: ['.KKK.......KKK..','KKKKK.....KKKKK.','KKKKKKKKKKKKKKK.','KKKKCCCCCCCKKKK.','.KKCCCCCCCCCKK..','..KCCCCCCCCCK...','.KCCKKCCCKKCCK..','.KCKKKKCKKKKCK..','KCKCKKKCKCKKKCK.','KCKKKKCCCKKKKCK.','KCCKKCCKCCKKCCK.','KCCCCCCCCCCCCCK.','.KCCCCCCCCCCCK..','..KKKKKKKKKKK...','................'],
+    tired:   ['.KKK.......KKK..','KKKKK.....KKKKK.','KKKKKKKKKKKKKKK.','KKKKCCCCCCCKKKK.','.KKCCCCCCCCCKK..','..KCCCCCCCCCK...','.KCCKKCCCKKCCK..','.KCKKKKCKKKKCK..','KCKKCCKCKCCKKCK.','KCKKKKCCCKKKKCK.','KCCKKCCKCCKKCCK.','KCCCCCCCCCCCCCK.','.KCCCCCCCCCCCK..','..KKKKKKKKKKK...','................'],
+    sleep:   ['.KKK.......KKK..','KKKKK.....KKKKK.','KKKKKKKKKKKKKKK.','KKKKCCCCCCCKKKK.','.KKCCCCCCCCCKK..','..KCCCCCCCCCK...','.KCCKKCCCKKCCK..','.KCKKKKCKKKKCK..','KCKKCCKCKCCKKCK.','KCKKKKCCCKKKKCK.','KCCKKCCKCCKKCCK.','KCCCCCCCCCCCCCK.','.KCCCCCCCCCCCK..','..KKKKKKKKKKK...','................'],
 };
-const PANDA_SLEEP_HALF = [[4,7],[11,7]];  // 반픽셀 흰자 위치 (중앙 고정, 거의 감김)
-const PANDA_TEAR = [[4,10,TEAR],[11,10,TEAR]];
+const PANDA_TEAR = [[5,10,TEAR],[9,10,TEAR]];   // 우는 표정 눈물 (기본 본체 + 눈물)
 // 진화 비주얼: tier2(자란다)=색 짙어짐, tier3(각성)=고유 변신. mono모드/picker/shop엔 미적용(tier 1)
-const SPR_CHICK2 = { w: 16, h: 15, pal: { O: '#f6d442', Y: '#ee882a', P: '#f09e9e' }, rows: ['................', '................', '...KKKKKKKKKK...', '..KOOOOOOOOOOK..', '.KOOOOOOOOOOOOK.', '.KOOOOOOOOOOOOK.', '.KOOOOOOOOOOOOK.', '.KOOOOOOOOOOOOK.', '.KOOKKOOOOKKOOK.', '.KPPKKOOOOKKPPK.', '.KOOOOOOOOOOOOK.', '.KOOOOYYYYOOOOK.', '.KOOOOOYYOOOOOK.', '..KKKKKKKKKKKK..', '................'] };            // 2단계: 병아리
-const SPR_CHICK3 = { w: 16, h: 15, pal: { O: '#fdfaf0', R: '#e2483a', Y: '#ee882a' }, rows: ['.....RR.RR......', '....RRRRRRR.....', '...KKKKKKKKKK...', '..KOOOOOOOOOOK..', '.KOOOOOOOOOOOOK.', '.KOOOOOOOOOOOOK.', '.KOOOOOOOOOOOOK.', '.KOOOOOOOOOOOOK.', '.KOOKKOOOOKKOOK.', '.KOOKKOOOOKKOOK.', '.KOOOOOOOOOOOOK.', '.KOOOOYYYYOOOOK.', '.KOOOOOYYOOOOOK.', '..KKKKKKKKKKKK..', '................'] };  // 3단계: 닭(흰 얼굴+빨간 볏)
+const SPR_CHICK2 = { w: 16, h: 15, pal: { X: '#ffed24', O: '#f6b94d' }, rows: ['....KKKKKKK.....','...KXXXXXXXK....','..KXXXXXXXXXK...','.KXXXXXXXXXXXK..','.KXXXXXXXXXXXK..','.KXXXKXXXKXXXK..','KXXXXKXXXKXXXKK.','KXXXXXXOXXXXXXK.','KXXXXXXXXXXXXXK.','KXXXXXXXXXXXXXK.','KXXXXXXXXXXXXXK.','KXXXXXXXXXXXXXK.','.KXXXXXXXXXXXK..','..KKKKKKKKKKK...','................'] };  // 2단계: 자란 병아리 (사용자 그림)
+const SPR_CHICK3 = { w: 16, h: 15, pal: { R: '#e2483a', C: '#fdf6e3', O: '#f6b94d' }, rows: ['.....RRRR.......','.....RRRRRR.....','..KKKKKKKKKKK...','.KCCCCCCCCCCCK..','.KCCCCCCCCCCCK..','.KCCKCCCCCKCCK..','KCCCCKCCCKCCCKK.','KCCCCCCOCCCCCCK.','KCCCCCCCCCCCCCK.','KCCCCCCCCCCCCCK.','KCCCCCCCCCCCCCK.','KCCCCCCCCCCCCCK.','.KCCCCCCCCCCCK..','..KKKKKKKKKKK...','................'] };  // 3단계: 닭 (사용자 그림, 빨강볏)
 const EVO_VIS = {
-    tiger:   { 2: { pal: { O: '#df7d1c', B: '#5c3412' } }, 3: { pal: { O: '#f7c948', B: '#7a4a12' }, crown: '#ffd84d', expr: 'regal' } },
-    cat:     { 2: { pal: { O: '#7c8390', C: '#e8e4dc' } }, 3: { pal: { O: '#3a3f50', C: '#2a2e3c' }, eyeColor: '#74e3c4' } },
-    dog:     { 2: { pal: { O: '#a8702f', D: '#5e3c18' } }, 3: { pal: { O: '#9aa0aa', D: '#4a4e57', C: '#dde1e7' }, expr: 'fierce' } },
-    hamster: { 2: { pal: { O: '#d7c193' } }, 3: { pal: { O: '#dcd2bb', C: '#fbf6e8' }, monocle: '#c79a3e' } },     // 현자 햄스터(연한 색+단안경)
-    chick:   { 2: { sprite: SPR_CHICK2 }, 3: { sprite: SPR_CHICK3, expr: 'fierce' } },                              // 알병아리→병아리→닭 (형태 변신)
-    rabbit:  { 2: { pal: { O: '#dfd2bb', P: '#e6a8aa' } }, 3: { pal: { O: '#cdd2ea', P: '#c9b6e0' }, eyeColor: '#ffe79c' } },      // 월광 토끼
-    monkey:  { 2: { pal: { O: '#86562c', C: '#e6d2a4' } }, 3: { pal: { O: '#e0a531', C: '#fff4d6' }, band: '#f0c84a', expr: 'fierce' } }, // 원숭이 왕(손오공)
-    fox:     { 2: { pal: { O: '#d4661f' } }, 3: { pal: { O: '#e7e4ef', C: '#ffffff', K: '#5a5470' }, eyeColor: '#ffd24a' } }, // 구미호(은빛+금눈)
-    panda:   { 2: { pal: { O: '#faf7ef', P: '#f3a6b0' } }, 3: { pal: { O: '#faf7ef', B: '#1a1614', A: '#cdb8e6', Y: '#ffd24a', P: '#cdb8e6', K: '#181513' } } }, // 도사 판다(연보라 포인트+금눈)
+    // 2단계=색 짙어짐, 3단계=고유 변신(컨셉 유지). 키는 새 디자인 팔레트 기준. 표정은 기본 눈 유지(특수표정 빼서 또렷).
+    tiger:   { 2: { pal: { O: '#df7d1c', B: '#5c3412' } },                          3: { pal: { O: '#f7c948', B: '#7a4a12' }, crown: '#ffd84d' } },   // 백호왕(금빛+왕관)
+    dog:     { 2: { pal: { O: '#a8702f', B: '#4a2f12' } },                          3: { pal: { O: '#9aa0aa', B: '#4a4e57', C: '#dde1e7' }, expr: 'fierce' } },     // 늑대(회색+사나운눈)
+    cat:     { 2: { pal: { O: '#7c8390', C: '#e8e4dc' } },                          3: { pal: { O: '#3a3f50', C: '#2a2e3c' }, eyeColor: '#74e3c4' } },               // 흑묘(청록눈)
+    fox:     { 2: { pal: { X: '#d4661f' } },                                        3: { pal: { X: '#cfcadb', C: '#ffffff' }, eyeColor: '#ffd24a' } },               // 구미호(은빛+금눈)
+    hamster: { 2: { pal: { O: '#d7c193' } },                                        3: { pal: { O: '#dcd2bb', C: '#fbf6e8' }, monocle: '#c79a3e' } },                // 현자 햄스터(단안경)
+    rabbit:  { 2: { pal: { X: '#e6a8aa' } },                                        3: { pal: { C: '#e7e9f5', X: '#c9b6e0' }, eyeColor: '#ffe79c' } },               // 월광 토끼(연보라)
+    monkey:  { 2: { pal: { B: '#5c3a1a', C: '#e6d2a4' } },                          3: { pal: { B: '#8a5a28', C: '#fff4d6' }, band: '#f0c84a' } },  // 손오공(머리띠)
+    chick:   { 2: { sprite: SPR_CHICK2 },                                           3: { sprite: SPR_CHICK3 } },                                    // 알→병아리→닭(형태변신)
+    panda:   { 2: { pal: { C: '#f5efe0' } },                                        3: { pal: { C: '#f0e6f5' }, pandaEye: '#ffd24a' } },                            // 도사 판다(따뜻한 연보라+금눈)
 };
 const EVO_CROWN = [[5, 1], [6, 1], [7, 1], [8, 1], [9, 1], [5, 0], [7, 0], [9, 0]];      // 왕관: 띠5 + 뿔3
 const EVO_COMB = [[6, 1], [7, 1], [8, 1], [9, 1], [6, 0], [8, 0]];                       // 닭 볏
-const EVO_BAND = [[4, 6], [5, 6], [6, 6], [7, 6], [8, 6], [9, 6], [10, 6], [11, 6], [7, 5], [8, 5]]; // 머리띠 + 가운데 보석
-const EVO_MONOCLE = [[10, 7], [11, 7], [9, 8], [12, 8], [9, 9], [12, 9], [10, 10], [11, 10], [13, 11], [13, 12]]; // 단안경 링(오른눈) + 체인
+const EVO_BAND = [[4, 4], [5, 4], [9, 4], [10, 4], [6, 5], [8, 5], [3, 6], [4, 6], [5, 6], [6, 6], [7, 6], [8, 6], [9, 6], [10, 6], [11, 6]]; // 손오공 머리띠(긴고아) (사용자 그림)
+const EVO_MONOCLE = [[8, 6], [9, 6], [10, 6], [8, 7], [10, 7], [8, 8], [10, 8], [8, 9], [9, 9], [10, 9], [11, 10], [12, 11]]; // 단안경 ㅁ자 링(오른눈 둘레) + 체인 (사용자 그림)
 function evoTier(lv) { return lv >= 10 ? 3 : (lv >= 5 ? 2 : 1); }
 function spriteSVG(key, size, mono, expr, tier) {
     let s = BL_SPRITES[key] || BL_SPRITES.tiger;
@@ -157,13 +177,34 @@ function spriteSVG(key, size, mono, expr, tier) {
         }
         grid.push(line);
     }
-    if (!s.noExpr && effExpr && effExpr !== 'open' && EYE_EXPR[effExpr]) {   // noExpr 스프라이트(알 등)는 표정 고정
+    if (!s.noExpr && key !== 'rabbit' && key !== 'chick' && effExpr && effExpr !== 'open' && EYE_EXPR[effExpr]) {   // noExpr 스프라이트(알)는 표정 고정 / 토끼·병아리는 전용
         const body = mono ? null : ((palOv && palOv[s.eyeBg || 'O']) || s.pal[s.eyeBg || 'O'] || s.pal.O || BL_INK);
         for (const [x, y] of EYE_BASE) grid[y][x] = body;             // 눈 지움(몸색)
+        // happy/sleep/blink/curious는 눈 영역(x4~6, x8~10, y7~8)의 검정 잔상만 지움(무늬 보존)
+        if (effExpr === 'happy' || effExpr === 'sleep' || effExpr === 'blink' || effExpr === 'curious') {
+            for (const ey of [7, 8]) for (const ex of [4, 5, 6, 8, 9, 10]) {
+                if (grid[ey][ex] === BL_INK) grid[ey][ex] = body;   // 검정(이전 눈)만 몸색으로
+            }
+        }
         for (const [x, y] of EYE_EXPR[effExpr]) grid[y][x] = BL_INK;  // 표정 그림
     }
+    // 토끼 전용 표정 (눈 1픽셀 아래 y8~9)
+    if (key === 'rabbit' && !mono && effExpr && effExpr !== 'open' && RABBIT_EXPR[effExpr]) {
+        const body = (palOv && palOv.C) || s.pal.C || s.pal.O;        // 토끼 눈 주변 = 흰색(C)
+        for (const [x, y] of RABBIT_EYE_BASE) grid[y][x] = body;
+        if (effExpr === 'happy' || effExpr === 'sleep' || effExpr === 'blink' || effExpr === 'curious') {
+            for (const ey of [8, 9]) for (const ex of [4, 5, 6, 8, 9, 10]) {
+                if (grid[ey][ex] === BL_INK) grid[ey][ex] = body;
+            }
+        }
+        for (const [x, y] of RABBIT_EXPR[effExpr]) grid[y][x] = BL_INK;
+    }
     let tearPixels = null;   // 눈물 픽셀(애니메이션용) — grid에 직접 안 그리고 별도 렌더
-    if (!s.noExpr && effExpr === 'curious' && EYE_EXPR_EXTRA.curious) {   // 호기심 흰자 — grid에 직접(고정)
+    if (key === 'rabbit' && !mono && effExpr === 'curious') {          // 토끼 호기심 흰자
+        for (const [x, y, col] of RABBIT_CURIOUS_WHITE) grid[y][x] = col;
+    } else if (key === 'rabbit' && !mono && effExpr === 'sad') {       // 토끼 눈물
+        tearPixels = RABBIT_TEAR.slice();
+    } else if (!s.noExpr && effExpr === 'curious' && EYE_EXPR_EXTRA.curious) {   // 호기심 흰자 — grid에 직접(고정)
         for (const [x, y, col] of EYE_EXPR_EXTRA.curious) grid[y][x] = mono ? BL_INK : col;
     } else if (!s.noExpr && effExpr && EYE_EXPR_EXTRA[effExpr]) {      // 색상 추가픽셀(눈물 애니)
         tearPixels = EYE_EXPR_EXTRA[effExpr].map(([x, y, col]) => [x, y, mono ? BL_INK : col]);
@@ -171,26 +212,33 @@ function spriteSVG(key, size, mono, expr, tier) {
     // 병아리 전용 표정 (점눈 변형) — 단계 변신(닭) 전에만, mono 아닐 때
     let pandaHalf = null;
     if (key === 'chick' && !mono && (!vis || !vis.sprite) && effExpr && CHICK_EXPR[effExpr]) {
-        const body = s.pal.O;
-        for (const [x, y] of CHICK_EYE_BASE) grid[y][x] = body;       // 점눈 지움
+        const body = s.pal.X || s.pal.O;     // 병아리 눈 주변 = 노랑(X)
+        for (const [x, y] of CHICK_EYE_BASE) grid[y][x] = body;       // 눈 지움
         for (const [x, y] of CHICK_EXPR[effExpr]) grid[y][x] = BL_INK;
         if (effExpr === 'sad') tearPixels = CHICK_TEAR.slice();
+        if (effExpr === 'curious') for (const [x, y, col] of CHICK_CURIOUS_WHITE) grid[y][x] = col;  // 호기심 흰자 ✨
     }
-    // 판다 전용 표정 (흰자 이동) — mono 아닐 때
+    // 판다 전용 표정 (표정별 본체 통째 교체) — mono 아닐 때
     if (key === 'panda' && !mono && effExpr) {
-        const padB = (palOv && palOv.B) || s.pal.B;   // 눈두덩색
-        const irisC = (palOv && palOv.Y) || s.pal.Y;  // 흰자색
-        if (effExpr === 'tired' || effExpr === 'sleep') {
-            for (const [x, y] of PANDA_EYE_BASE) grid[y][x] = padB;   // 기본 흰자 지움
-            pandaHalf = { coords: PANDA_SLEEP_HALF, color: irisC };   // 반픽셀(중앙 고정) — 졸린 눈
-        } else if (PANDA_EXPR[effExpr]) {
-            for (const [x, y] of PANDA_EYE_BASE) grid[y][x] = padB;   // 기본 흰자 지움
-            for (const [x, y] of PANDA_EXPR[effExpr]) grid[y][x] = irisC;  // 새 위치
-            if (effExpr === 'sad') tearPixels = PANDA_TEAR.slice();
+        let face = null;
+        if (effExpr === 'sad') { face = null; tearPixels = PANDA_TEAR.slice(); }  // 우는 표정 = 기본 + 눈물
+        else if (PANDA_FACE[effExpr]) face = PANDA_FACE[effExpr];
+        else if (effExpr === 'blink') face = PANDA_FACE.sleep;  // 깜빡임은 졸린 눈 재사용
+        if (face) {
+            for (let yy = 0; yy < s.h; yy++) for (let xx = 0; xx < s.w; xx++) {
+                const c = face[yy] ? face[yy][xx] : '.';
+                grid[yy][xx] = (c === '.') ? null : (c === 'K' ? BL_INK : (s.pal[c] || BL_INK));
+            }
         }
     }
+    // 판다 진화 금눈 (도사 판다) — 눈동자(흰자) 자리를 금색으로
+    if (key === 'panda' && !mono && vis && vis.pandaEye) {
+        for (const [x, y] of [[5, 7], [9, 7]]) grid[y][x] = vis.pandaEye;
+    }
     if (vis && vis.eyeColor && !s.noExpr) {                            // 빛나는 눈(고양이/토끼/구미호)
-        const coords = (effExpr && effExpr !== 'open' && EYE_EXPR[effExpr]) ? EYE_EXPR[effExpr] : EYE_BASE;
+        let coords;
+        if (key === 'rabbit') coords = (effExpr && effExpr !== 'open' && RABBIT_EXPR[effExpr]) ? RABBIT_EXPR[effExpr] : RABBIT_EYE_BASE;  // 토끼는 1픽셀 내린 눈
+        else coords = (effExpr && effExpr !== 'open' && EYE_EXPR[effExpr]) ? EYE_EXPR[effExpr] : EYE_BASE;
         for (const [x, y] of coords) grid[y][x] = vis.eyeColor;
     }
     if (vis && vis.crown) for (const [x, y] of EVO_CROWN) grid[y][x] = vis.crown;  // 왕관(호랑이)
@@ -392,6 +440,18 @@ function affinityDelta(kind) { return ({ help: 2, cooperate: 3, activity: 1, int
 // ── 알바 / 돈 / 상점 ──
 const MASCOT_PRICE = { tiger: 0, cat: 0, dog: 0, monkey: 100000, chick: 150000, hamster: 170000, rabbit: 170000, fox: 200000, panda: 200000 };
 const JOB_LOAD = ['알바 뛰는 중…', '시급 계산 중…', '사장님 눈치 보는 중…', '진상 응대 중…', '허드렛일 처리 중…'];
+// ── 복권 (깽판 알바 보완책) ──
+const LOTTO_PRICE = 1000;          // 1장 가격
+const LOTTO_UNLOCK = 15000;        // 마지막 알바비 ≤ 이 금액일 때만 해금
+const LOTTO_MAX = 3;               // 알바 1회당 최대 구매 횟수
+const LOTTO_LOAD = ['긁는 중…', '두근두근…', '제발…', '이번엔…', '운명의 한 장…'];
+// 당첨표: 꽝 많게(기대값 850원<1천원, 보통은 손해). 5만원은 로망(0.5%). [상금, 가중치]
+const LOTTO_TABLE = [
+    { prize: 0,     w: 900, label: '꽝' },
+    { prize: 5000,  w: 70,  label: '5천원' },
+    { prize: 10000, w: 25,  label: '1만원' },
+    { prize: 50000, w: 5,   label: '5만원' },
+];
 function ownsMascot(k) { return (STATE.owned || []).includes(k); }
 function fmtMoney(n) { return (n || 0).toLocaleString('ko-KR') + '원'; }
 function jobRemaining() {
@@ -487,6 +547,7 @@ function applyJob(job) {
     if (STATE.jobs.length > 30) STATE.jobs.length = 30;
     STATE.lastJobCount = (STATE.turnCount || 0);
     STATE.jobCD = 2 + Math.floor(Math.random() * 3);   // 다음 알바까지 2~4회 랜덤
+    STATE.lottoUsed = 0;                                // 새 알바 → 복권 횟수 리셋
     STATE.hunger = clamp0100((STATE.hunger == null ? 80 : STATE.hunger) - 12);   // 알바 → 배고파짐
     if (Math.random() < 0.35) STATE.hp = clamp0100((STATE.hp == null ? 100 : STATE.hp) - 10);   // 가끔 고된 노동 → 체력↓
     saveState(STATE); renderAll();
@@ -494,6 +555,71 @@ function applyJob(job) {
 }
 function deleteJob(id) { STATE.jobs = (STATE.jobs || []).filter(j => j.id !== id); saveState(STATE); renderFull(); }
 function clearJobs() { showConfirm('알바 내역 비우기', '알바 기록을 전부 지울까요? (돈은 그대로)', () => { STATE.jobs = []; STATE.lastJob = null; saveState(STATE); renderAll(); }); }
+
+// ── 복권 ──
+function lottoUnlocked() {
+    // 마지막 알바를 뛰었고, 그 알바비가 LOTTO_UNLOCK 이하일 때만
+    const lj = STATE.lastJob;
+    if (!lj) return false;
+    return (lj.pay || 0) <= LOTTO_UNLOCK;
+}
+function lottoLeft() { return Math.max(0, LOTTO_MAX - (STATE.lottoUsed || 0)); }
+function canLotto() { return lottoUnlocked() && lottoLeft() > 0 && (STATE.money || 0) >= LOTTO_PRICE; }
+function drawLotto() {
+    const total = LOTTO_TABLE.reduce((s, t) => s + t.w, 0);
+    let r = Math.random() * total;
+    for (const t of LOTTO_TABLE) { if ((r -= t.w) < 0) return t; }
+    return LOTTO_TABLE[0];
+}
+function buildLottoPrompt(result, lastPay) {
+    const win = result.prize > 0;
+    const members = groupMemberNames();
+    const lastWho = (STATE.lastJob && STATE.lastJob.who && STATE.lastJob.who.trim()) || '';
+    const whoLine = lastWho
+        ? `방금 알바를 뛴 건 "${lastWho}"다. 같은 캐릭터가 복권도 긁었다. 그의 시점·성격으로 써라.`
+        : (members.length > 1
+            ? `이 채팅엔 여러 캐릭터(${members.join(', ')})가 있다. 방금 알바를 뛰고 온 그 캐릭터가 복권을 긁었다. 가장 어울리는 한 명을 골라 그의 시점·성격으로 써라.`
+            : `이 RP에 등장하는 캐릭터 중 방금 알바를 뛴 그 캐릭터가 직접 복권을 긁었다. (한 명만 있으면 그 캐릭터다.)`);
+    return `RP 속 캐릭터가 방금 알바를 뛰었는데 ${fmtMoney(lastPay)}밖에 못 벌었다(쥐꼬리/사건). 홧김에/혹은 한탕 노리고 즉석복권 한 장(${fmtMoney(LOTTO_PRICE)})을 긁었다. 결과는 **${result.label}**(${win ? fmtMoney(result.prize) + ' 당첨' : '꽝'}). 그 장면을 만든다. (유저나 펫이 아니라, RP 캐릭터가 직접 긁은 것)
+${whoLine}
+${getScene()}규칙:
+- **그 캐릭터의 성격이 후기(voice)와 소감(mood)에 진하게 묻어나게 하라.** 무뚝뚝하면 무뚝뚝하게, 거만하면 "이딴 거에 기대다니" 투덜대며, 성실하면 멋쩍게, 허세 있으면 큰소리치다 머쓱하게. 그 캐릭터의 세계/처지에 맞는 곳에서 긁게 하라(현대면 편의점·자판기 옆, 판타지면 그 세계의 도박/제비뽑기 식으로 치환).
+- voice와 mood는 **그 캐릭터 본인이 직접 겪고 말하는 시점**으로 써라. 제3자처럼 부르거나 유저/펫이 시킨 것처럼 쓰지 마라.
+- voice: 복권 산 계기(왜 샀나) + 긁는 과정·결과를 2~3문장 데드팬 코미디로 (알바 후기 정도 길이).
+- mood: 그 결과를 본 그 캐릭터의 한 줄 소감(짧고 그 캐릭터다운 말투로).
+- ${win ? '당첨이지만 상금도 짜다(인생역전 아님). 너무 들뜨지 말고 그 캐릭터다운 반응.' : '꽝. 허무하거나 분하거나 — 그 캐릭터답게.'}
+형식(JSON만, 코드펜스 금지): {"voice":"2~3문장 데드팬 후기","mood":"한 줄 소감"}
+[대화 맥락]
+${getConvo()}`;
+}
+async function buyLotto() {
+    if (_blBusy) return;
+    if (!canLotto()) {
+        if (!lottoUnlocked()) flash('💸 복권은 알바비 1만5천원 이하일 때만…');
+        else if (lottoLeft() <= 0) flash('🎰 이번 알바 복권은 다 썼다 (다음 알바 후 다시)');
+        else flash(`💸 ${fmtMoney(LOTTO_PRICE - (STATE.money || 0))} 모자람`);
+        return;
+    }
+    _blBusy = true;
+    STATE.money = (STATE.money || 0) - LOTTO_PRICE;
+    STATE.lottoUsed = (STATE.lottoUsed || 0) + 1;
+    const lastPay = (STATE.lastJob && STATE.lastJob.pay) || 0;
+    const result = drawLotto();
+    if (result.prize > 0) STATE.money = (STATE.money || 0) + result.prize;
+    saveState(STATE); renderAll();
+    showLoading(pick(LOTTO_LOAD));
+    let voice = '', mood = '';
+    try {
+        const txt = await llmGenerate(buildLottoPrompt(result, lastPay), 1024);
+        const o = parseLLMJson(txt);
+        voice = subMacros(String(o.voice || '')).slice(0, 300);
+        mood = subMacros(String(o.mood || '')).slice(0, 120);
+    } catch (err) { if (!handleLlmError(err)) { voice = result.prize > 0 ? '…당첨이네. 별 거 아니지만.' : '…꽝이다. 그럴 줄 알았어.'; } }
+    finally { _blBusy = false; }
+    closePopup();
+    showLottoResult(result, voice, mood);
+}
+function resetLotto() { STATE.lottoUsed = 0; saveState(STATE); renderAll(); }
 const FEED_FOOD = ['편의점 삼각김밥', '길에서 주운 붕어빵', '유통기한 임박 소시지', '수상한 통조림', '사장이 남긴 식은 치킨', '정체불명의 사료', '눅눅한 새우깡', '반쯤 녹은 아이스크림', '누가 흘린 호두과자'];
 const FEED_FREE_CAP = 60;   // 무료로 채울 수 있는 배고픔 상한
 const FEED_FREE_GAIN = 20;  // 무료 1회 회복량
@@ -695,7 +821,25 @@ function showJobResult(job) {
     pop.querySelector('.bl-result-ok').addEventListener('click', closePopup);
 }
 
-// ── 로딩/후일담 풀 ──
+function showLottoResult(result, voice, mood) {
+    closePopup();
+    const ctx = getCtx();
+    const charName = (STATE.lastJob && STATE.lastJob.who && STATE.lastJob.who.trim()) ? STATE.lastJob.who.trim() : ((ctx && ctx.name2) ? ctx.name2 : '');
+    const win = result.prize > 0;
+    const pop = document.createElement('div'); pop.id = 'beastlog-popup';
+    pop.innerHTML = `
+      <div class="bl-pop-card bl-cat-npc">
+        <div class="bl-pop-badge">🎰 ${charName ? escapeHtml(charName) + '의 ' : ''}즉석복권</div>
+        <div class="bl-pop-title">${win ? '🎉 ' + escapeHtml(result.label) + ' 당첨!' : '💢 꽝'}</div>
+        ${voice ? `<div class="bl-job-report">${escapeHtml(voice)}</div>` : ''}
+        <div class="bl-job-pay">${win ? '💰 +' + fmtMoney(result.prize) : '🪦 -' + fmtMoney(LOTTO_PRICE)}</div>
+        ${mood ? `<div class="bl-job-mood">💭 ${escapeHtml(mood)}</div>` : ''}
+        <div class="bl-lotto-left">🎟️ 남은 복권 ${lottoLeft()}/${LOTTO_MAX}</div>
+        <button class="bl-pop-ignore bl-result-ok">확인 · 보유 💰 ${fmtMoney(STATE.money)}</button>
+      </div>`;
+    mountPopup(pop);
+    pop.querySelector('.bl-result-ok').addEventListener('click', closePopup);
+}
 const LOAD_APPEAR = ['두리번거리는 중...', '킁킁 냄새 맡는 중...', '골목을 기웃거리는 중...', '수상한 기척을 쫓는 중...', '풀숲을 헤집는 중...', '누군가 다가오는 중...', '뭔가 어슬렁대는 중...', '주변을 살피는 중...', '발소리를 듣는 중...', '고개를 갸웃하는 중...', '냄새의 출처를 찾는 중...'];
 const LOAD_SIT = ['바람 냄새 맡는 중...', '하늘을 올려다보는 중...', '공기가 바뀌는 걸 느끼는 중...', '낌새를 살피는 중...', '뭔가 다가오는 중...', '분위기를 재는 중...', '먹구름을 보는 중...', '이상한 예감이 드는 중...', '곤란한 일이 다가오는 중...'];
 const LOAD_RESOLVE = ['무슨 일이 벌어지는 중...', '눈치 보는 중...', '잠깐 숨 참는 중...', '상황이 흘러가는 중...', '결과를 지켜보는 중...', '두근대는 중...', '침을 꼴깍 삼키는 중...', '귀를 쫑긋 세우는 중...'];
@@ -1580,6 +1724,10 @@ function buildFull() {
               <div class="bl-money-bar">보유 <b class="num bl-work-money">0원</b><button class="bl-donate" title="전 재산 후원">💝 후원</button></div>
               <button class="bl-work-go">🛠️ 알바 뛰기</button>
               <div class="bl-work-cd"></div>
+              <div class="bl-lotto">
+                <button class="bl-lotto-go">🎰 즉석복권 긁기 (1천원)</button>
+                <div class="bl-lotto-info"></div>
+              </div>
               <div class="bl-acc bl-work-acc collapsed">
                 <div class="bl-acc-head"><h3>🛠️ 알바 내역</h3><span class="bl-rule"></span><span class="bl-job-cnt num"></span><button class="bl-clear-btn bl-jobs-clear" title="전체 비우기">🧹</button><span class="bl-chev">▾</span></div>
                 <div class="bl-acc-body"><div class="bl-jobs-list"></div></div>
@@ -1657,6 +1805,7 @@ function buildFull() {
     fullEl.querySelector('.bl-bag-clear').addEventListener('click', e => { e.stopPropagation(); clearItems(); });
     fullEl.querySelector('.bl-pet-pick').addEventListener('click', e => { const b = e.target.closest('.bl-pick-btn'); if (b) pickMascot(b.dataset.m); });
     fullEl.querySelector('.bl-work-go').addEventListener('click', onWork);
+    const lottoBtn = fullEl.querySelector('.bl-lotto-go'); if (lottoBtn) lottoBtn.addEventListener('click', buyLotto);
     fullEl.querySelector('.bl-donate').addEventListener('click', onDonate);
     { const fb = fullEl.querySelector('.bl-feed'); if (fb) fb.addEventListener('click', onFeed); }
     { const rb = fullEl.querySelector('.bl-rename-btn'); if (rb) rb.addEventListener('click', onRename); }
@@ -1835,6 +1984,19 @@ function renderFull() {
     // 알바 탭
     const wm = fullEl.querySelector('.bl-work-money'); if (wm) wm.textContent = fmtMoney(STATE.money);
     const wcd = fullEl.querySelector('.bl-work-cd'); if (wcd) { const r = jobRemaining(); wcd.textContent = r > 0 ? `😮‍💨 ${r}턴 더 쉬어야` : '✅ 알바 가능'; }
+    const lottoBox = fullEl.querySelector('.bl-lotto'); const lottoBtn = fullEl.querySelector('.bl-lotto-go'); const lottoInfo = fullEl.querySelector('.bl-lotto-info');
+    if (lottoBox) {
+        if (lottoUnlocked()) {
+            lottoBox.style.display = '';
+            const left = lottoLeft();
+            if (lottoBtn) lottoBtn.disabled = !canLotto();
+            if (lottoInfo) lottoInfo.textContent = left > 0
+                ? `🎟️ ${left}/${LOTTO_MAX}장 남음 · 알바비가 짰으니 한탕 노려봐요 (5천/1만/5만/꽝)`
+                : '이번 알바 복권 다 썼어요 — 다음 알바 후 다시';
+        } else {
+            lottoBox.style.display = 'none';   // 알바비 1만5천원 초과면 숨김
+        }
+    }
     const jc = fullEl.querySelector('.bl-job-cnt'); if (jc) jc.textContent = (STATE.jobs || []).length + '건';
     const jl = fullEl.querySelector('.bl-jobs-list');
     if (jl) {
