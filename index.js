@@ -137,6 +137,24 @@ const PANDA_TEAR = [[5,10,TEAR],[9,10,TEAR]];   // 우는 표정 눈물 (기본 
 // 진화 비주얼: tier2(자란다)=색 짙어짐, tier3(각성)=고유 변신. mono모드/picker/shop엔 미적용(tier 1)
 const SPR_CHICK2 = { w: 16, h: 15, pal: { X: '#ffed24', O: '#f6b94d' }, rows: ['....KKKKKKK.....','...KXXXXXXXK....','..KXXXXXXXXXK...','.KXXXXXXXXXXXK..','.KXXXXXXXXXXXK..','.KXXXKXXXKXXXK..','KXXXXKXXXKXXXKK.','KXXXXXXOXXXXXXK.','KXXXXXXXXXXXXXK.','KXXXXXXXXXXXXXK.','KXXXXXXXXXXXXXK.','KXXXXXXXXXXXXXK.','.KXXXXXXXXXXXK..','..KKKKKKKKKKK...','................'] };  // 2단계: 자란 병아리 (사용자 그림)
 const SPR_CHICK3 = { w: 16, h: 15, pal: { R: '#e2483a', C: '#fdf6e3', O: '#f6b94d' }, rows: ['.....RRRR.......','.....RRRRRR.....','..KKKKKKKKKKK...','.KCCCCCCCCCCCK..','.KCCCCCCCCCCCK..','.KCCKCCCCCKCCK..','KCCCCKCCCKCCCKK.','KCCCCCCOCCCCCCK.','KCCCCCCCCCCCCCK.','KCCCCCCCCCCCCCK.','KCCCCCCCCCCCCCK.','KCCCCCCCCCCCCCK.','.KCCCCCCCCCCCK..','..KKKKKKKKKKK...','................'] };  // 3단계: 닭 (사용자 그림, 빨강볏)
+// 🐯 호랑이 앉은 모습 (시메지 상호작용용, 사용자 그림 16×22)
+const SPR_TIGER_SIT = { w: 16, h: 22, pal: { O: '#f6b94d', C: '#fdf6e3', B: '#7a4f28' }, rows: ['.KKK.......KKK..','KOCCK.....KOCCK.','KOCCKKKKKKKOCCK.','KOOOOOOBOOOOOOK.','.KOOOOBBBOOOOK..','.KOOOOOBOOOOOK..','KOOOOOOOOOOOOOK.','KBBOOKOOOKOOBBK.','KOOOOKOOOKOOOOK.','KBBOOOOOOOOOBBK.','KOOOOOCKCOOOOOK.','KOOOOCCCCCOOOOK.','.KOOOCCCCCOOOK..','..KKKKKKKKKKK...','.KKOOOOOOOOOKK..','.KBOOOCCCOOOBK..','.KOBBCCCCCBBOK..','.KOOOCCCCCOOOK..','.KBBBOCCCOBBBK..','KOKOOKCCCKOOKOK.','KOKCCKOOOKCCKOK.','KKKKKKKKKKKKKKK.'] };
+function tigerSitSVG(width) {
+    const s = SPR_TIGER_SIT;
+    let rects = '';
+    for (let y = 0; y < s.h; y++) {
+        let x = 0;
+        while (x < s.w) {
+            const c = s.rows[y][x];
+            if (c === '.') { x++; continue; }
+            let run = 1; while (x + run < s.w && s.rows[y][x + run] === c) run++;
+            const col = c === 'K' ? BL_INK : (s.pal[c] || BL_INK);
+            rects += `<rect x="${x}" y="${y}" width="${run}" height="1" fill="${col}"/>`;
+            x += run;
+        }
+    }
+    return `<svg width="${width}" height="${Math.round(width * s.h / s.w)}" viewBox="0 0 ${s.w} ${s.h}" shape-rendering="crispEdges">${rects}</svg>`;
+}
 const EVO_VIS = {
     // 2단계=색 짙어짐, 3단계=고유 변신(컨셉 유지). 키는 새 디자인 팔레트 기준. 표정은 기본 눈 유지(특수표정 빼서 또렷).
     tiger:   { 2: { pal: { O: '#df7d1c', B: '#5c3412' } },                          3: { pal: { O: '#f7c948', B: '#7a4a12' }, crown: '#ffd84d' } },   // 백호왕(금빛+왕관)
@@ -442,7 +460,7 @@ const MASCOT_PRICE = { tiger: 0, cat: 0, dog: 0, monkey: 100000, chick: 150000, 
 const JOB_LOAD = ['알바 뛰는 중…', '시급 계산 중…', '사장님 눈치 보는 중…', '진상 응대 중…', '허드렛일 처리 중…'];
 // ── 복권 (깽판 알바 보완책) ──
 const LOTTO_PRICE = 1000;          // 1장 가격
-const LOTTO_UNLOCK = 15000;        // 마지막 알바비 ≤ 이 금액일 때만 해금
+const LOTTO_UNLOCK = 50000;        // 마지막 알바비 ≤ 이 금액일 때만 해금
 const LOTTO_MAX = 3;               // 알바 1회당 최대 구매 횟수
 const LOTTO_LOAD = ['긁는 중…', '두근두근…', '제발…', '이번엔…', '운명의 한 장…'];
 // 당첨표: 꽝 많게(기대값 850원<1천원, 보통은 손해). 5만원은 로망(0.5%). [상금, 가중치]
@@ -596,7 +614,7 @@ ${getConvo()}`;
 async function buyLotto() {
     if (_blBusy) return;
     if (!canLotto()) {
-        if (!lottoUnlocked()) flash('💸 복권은 알바비 1만5천원 이하일 때만…');
+        if (!lottoUnlocked()) flash('💸 복권은 알바비 5만원 이하일 때만…');
         else if (lottoLeft() <= 0) flash('🎰 이번 알바 복권은 다 썼다 (다음 알바 후 다시)');
         else flash(`💸 ${fmtMoney(LOTTO_PRICE - (STATE.money || 0))} 모자람`);
         return;
@@ -669,6 +687,33 @@ function onFeed() {
         saveState(STATE); renderAll();
         showNote('🍖 특식', `'${menu.food}'`, pick(FEED_LINE));
     });
+}
+// 쓰다듬기 — 기분↑ + 반응 애니메이션 (연타 방지 쿨다운)
+const PET_LINES = ['기분 좋은 듯 눈을 가늘게 뜬다.', '골골골… 몸을 비빈다.', '가만히 쓰다듬을 맡긴다.', '꼬리를(?) 살랑인다.', '만족스러운 표정을 짓는다.', '슬쩍 더 만져달라는 듯 고개를 든다.'];
+let _petCD = 0;
+function onPet() {
+    const now = Date.now();
+    if (now < _petCD) return;          // 0.8초 쿨다운(연타 방지)
+    _petCD = now + 800;
+    STATE.mood = clamp0100((STATE.mood || 0) + 4);   // 기분 +4
+    saveState(STATE);
+    playPetReaction();                 // 반응 애니메이션(happy 표정 잠깐)
+    renderAll();
+}
+// 쓰다듬기 반응: 잠깐 happy 표정 + 통통 튀는 애니메이션
+let _petAnimTO = null;
+function playPetReaction() {
+    if (bubbleEl && bubbleEl.style.display !== 'none') {
+        const sitting = _shimeji.state === 'sitfix';   // 앉은 상태(아이콘 열림)면 앉은 채로 바운스
+        if (!sitting) bubbleEl.innerHTML = mascotSVG(34, 'happy');   // 걷기 중이면 웃는 얼굴
+        bubbleEl.classList.add('bl-pet-bounce');
+        if (_petAnimTO) clearTimeout(_petAnimTO);
+        _petAnimTO = setTimeout(() => {
+            if (!bubbleEl) return;
+            bubbleEl.classList.remove('bl-pet-bounce');
+            if (_shimeji.state !== 'sitfix') bubbleEl.innerHTML = mascotSVG(34);
+        }, 900);
+    }
 }
 function resetMoney() { showConfirm('돈 리셋', `보유 금액 ${fmtMoney(STATE.money)}을(를) 0원으로 되돌릴까요?`, () => { STATE.money = 0; saveState(STATE); renderAll(); flash('💰 0원으로 리셋'); }); }
 
@@ -852,7 +897,7 @@ const AFTER_POOL = ['며칠 뒤, 그 사람은 당신을 꽤 괜찮은 사람으
 function rollAfter() { return Math.random() < 0.18 ? pick(AFTER_POOL) : null; }
 
 // ── 전역 설정 ──
-function defaultExt() { return { connectionProfile: '', autoDetect: false, cooldownTurns: 3, mascot: 'tiger', contextDepth: 'balance', consolePos: null, bubblePos: null, chainOn: true, spriteMono: false, theme: 'pudding' }; }
+function defaultExt() { return { connectionProfile: '', autoDetect: false, cooldownTurns: 3, mascot: 'tiger', contextDepth: 'balance', consolePos: null, bubblePos: null, chainOn: true, spriteMono: false, theme: 'pudding', shimeji: false }; }
 let EXT = defaultExt();
 function loadExt() {
     const ctx = getCtx();
@@ -1480,6 +1525,17 @@ function setInjectDefault(v) { STATE.settings.injectDefault = v; saveState(STATE
 function setAutoDetect(v) { EXT.autoDetect = v; saveExt(); syncControls(); }
 function setChain(v) { EXT.chainOn = v; saveExt(); syncControls(); }
 function setSpriteMono(v) { EXT.spriteMono = v; saveExt(); renderAll(); syncControls(); }
+function setShimeji(v) {
+    EXT.shimeji = v; saveExt(); syncControls();
+    if (v) {
+        // 시메지 켜면: 버블만 남기고 걷기 시작
+        closeBubbleActions();
+        collapseToBubble();
+    } else {
+        stopShimeji();
+        if (bubbleEl) { bubbleEl.style.transform = ''; bubbleEl.innerHTML = mascotSVG(34); positionBubble(); }
+    }
+}
 const BL_THEMES = [{ k: 'pudding', label: '🍮 푸딩' }, { k: 'mint', label: '🍵 말차' }, { k: 'strawberry', label: '🌸 벚꽃' }, { k: 'dawn', label: '🌌 새벽하늘' }];
 function applyTheme() {
     const t = (EXT && EXT.theme) || 'pudding';
@@ -1497,6 +1553,7 @@ function syncControls() {
         const fa = fullEl.querySelector('.bl-t-auto'); if (fa) fa.checked = EXT.autoDetect;
         const fc = fullEl.querySelector('.bl-t-chain'); if (fc) fc.checked = EXT.chainOn !== false;
         const fm = fullEl.querySelector('.bl-t-mono'); if (fm) fm.checked = EXT.spriteMono === true;
+        const fsh = fullEl.querySelector('.bl-t-shimeji'); if (fsh) fsh.checked = EXT.shimeji === true;
         const curTheme = EXT.theme || 'pudding';
         fullEl.querySelectorAll('.bl-theme-btn').forEach(b => b.classList.toggle('on', b.dataset.theme === curTheme));
     }
@@ -1764,6 +1821,7 @@ function buildFull() {
               <label><span>🌱 기억을 RP에 흘리기 <small>(선택) — 켜면 쌓인 NPC·일지를 캐릭터가 대화 중 가끔 자연스럽게 떠올려요. 강제 등장 X, 그냥 슬쩍</small></span><input type="checkbox" class="bl-t-inject"></label>
               <label><span>🔗 이벤트 체인 <small>(켜면 조우·상황이 랜덤 1~3단계로 이어짐 / 끄면 1번에 끝)</small></span><input type="checkbox" class="bl-t-chain"></label>
               <label><span>🎨 마스코트 흑백(도트라인)</span><input type="checkbox" class="bl-t-mono"></label>
+              <label><span>🚶 시메지 모드(바닥 어슬렁 + 탭하면 🍖✋)</span><input type="checkbox" class="bl-t-shimeji"></label>
               <label><span>📥 자동 출현 <small>(켜면 RP 상대 답장마다 랜덤 3~4회 간격으로 조우·상황이 저절로 뜸 / 끄면 버튼으로 직접)</small></span><input type="checkbox" class="bl-t-auto"></label>
               <label><span>🍖 배고픔 알림 <small>(켜면 배고프거나 삐졌을 때 살짝 토스트로 알려줘요 / 끄면 조용히)</small></span><input type="checkbox" class="bl-t-hwarn"></label>
             </div>
@@ -1799,6 +1857,7 @@ function buildFull() {
     fullEl.querySelector('.bl-t-inject').addEventListener('change', e => setInjectDefault(e.target.checked));
     fullEl.querySelector('.bl-t-chain').addEventListener('change', e => setChain(e.target.checked));
     fullEl.querySelector('.bl-t-mono').addEventListener('change', e => setSpriteMono(e.target.checked));
+    { const sh = fullEl.querySelector('.bl-t-shimeji'); if (sh) sh.addEventListener('change', e => setShimeji(e.target.checked)); }
     fullEl.querySelector('.bl-t-auto').addEventListener('change', e => setAutoDetect(e.target.checked));
     { const hw = fullEl.querySelector('.bl-t-hwarn'); if (hw) hw.addEventListener('change', e => { STATE.settings.hungerWarn = e.target.checked; saveState(STATE); if (e.target.checked) hungerWarnLevel = -1; }); }
     fullEl.querySelector('.bl-roll2').addEventListener('click', onAppear);
@@ -1998,7 +2057,7 @@ function renderFull() {
                 ? `🎟️ ${left}/${LOTTO_MAX}장 남음 · 알바비가 짰으니 한탕 노려봐요 (5천/1만/5만/꽝)`
                 : '이번 알바 복권 다 썼어요 — 다음 알바 후 다시';
         } else {
-            lottoBox.style.display = 'none';   // 알바비 1만5천원 초과면 숨김
+            lottoBox.style.display = 'none';   // 알바비 5만원 초과면 숨김
         }
     }
     const jc = fullEl.querySelector('.bl-job-cnt'); if (jc) jc.textContent = (STATE.jobs || []).length + '건';
@@ -2019,6 +2078,7 @@ function renderFull() {
     fullEl.querySelector('.bl-t-inject').checked = STATE.settings.injectDefault;
     fullEl.querySelector('.bl-t-chain').checked = EXT.chainOn !== false;
     fullEl.querySelector('.bl-t-mono').checked = EXT.spriteMono === true;
+    { const sh = fullEl.querySelector('.bl-t-shimeji'); if (sh) sh.checked = EXT.shimeji === true; }
     fullEl.querySelector('.bl-t-auto').checked = EXT.autoDetect;
     { const ct = EXT.theme || 'pudding'; fullEl.querySelectorAll('.bl-theme-btn').forEach(b => b.classList.toggle('on', b.dataset.theme === ct)); }
     renderQuests();
@@ -2077,6 +2137,7 @@ function renderAll() { renderConsole(); if (fullEl) renderFull(); if (bubbleEl) 
 
 let bubbleEl = null;
 let _bubbleMoved = false;
+let _bubbleDragging = false;
 function buildBubble() {
     if (bubbleEl) return;
     bubbleEl = document.createElement('div');
@@ -2084,13 +2145,76 @@ function buildBubble() {
     bubbleEl.title = '비스트로그 (드래그로 이동)';
     Object.assign(bubbleEl.style, { position: 'fixed', zIndex: '2147483000', display: 'none', touchAction: 'none' });
     (document.documentElement || document.body).appendChild(bubbleEl);
-    bubbleEl.addEventListener('click', () => { if (_bubbleMoved) { _bubbleMoved = false; return; } showMini(); });
+    bubbleEl.addEventListener('click', () => {
+        if (_bubbleMoved) { _bubbleMoved = false; return; }
+        if (EXT.shimeji) toggleBubbleActions();   // 시메지 모드: 🍖/✋ 액션 아이콘
+        else showMini();                          // 일반 모드: 미니창
+    });
     setupBubbleDrag();
+}
+// 시메지 액션 아이콘 (🍖 밥 / ✋ 쓰다듬기) — 버블 위에 뜸
+let bubbleActionsEl = null;
+// 스프라이트 교체(발바닥 위치 유지: 바닥 기준 정렬)
+function shimejiSwapSprite(html) {
+    if (!bubbleEl) return;
+    const bottom = bubbleEl.getBoundingClientRect().bottom;
+    bubbleEl.innerHTML = html;
+    const nh = bubbleEl.offsetHeight || 34;
+    bubbleEl.style.top = Math.max(2, bottom - nh) + 'px';
+}
+function enterSitMode() {
+    if (!EXT.shimeji || !bubbleEl) return;
+    _shimeji.state = 'sitfix';
+    // 호랑이면 앉은 모습(몸통), 다른 동물은 얼굴 그대로 (호랑이만 몸통 테스트 중)
+    if (EXT.mascot === 'tiger') shimejiSwapSprite(tigerSitSVG(34));
+    bubbleEl.style.transform = `scaleX(${_shimeji.dir})`;
+}
+function exitSitMode() {
+    if (!bubbleEl) return;
+    shimejiSwapSprite(mascotSVG(34));
+    if (EXT.shimeji && _shimeji.on) {
+        _shimeji.state = 'walk';
+        _shimeji.until = performance.now() + 2000 + Math.random() * 2000;
+        _shimeji.lastT = performance.now();
+        const r = bubbleEl.getBoundingClientRect();
+        _shimeji.x = r.left;
+    }
+}
+function toggleBubbleActions() {
+    if (bubbleActionsEl) { closeBubbleActions(); return; }
+    if (!bubbleEl) return;
+    enterSitMode();   // 탭 → 앉아서 기다림
+    bubbleActionsEl = document.createElement('div');
+    bubbleActionsEl.id = 'beastlog-bubble-actions';
+    bubbleActionsEl.innerHTML = `
+      <button class="bl-ba-btn bl-ba-pet" title="쓰다듬기">✋</button>
+      <button class="bl-ba-btn bl-ba-feed" title="밥 주기">🍖</button>`;
+    (document.documentElement || document.body).appendChild(bubbleActionsEl);
+    positionBubbleActions();
+    bubbleActionsEl.querySelector('.bl-ba-pet').addEventListener('click', e => { e.stopPropagation(); onPet(); });
+    bubbleActionsEl.querySelector('.bl-ba-feed').addEventListener('click', e => { e.stopPropagation(); onFeed(); });
+    // 바깥 클릭 시 닫기
+    setTimeout(() => document.addEventListener('pointerdown', onOutsideAction, true), 0);
+}
+function positionBubbleActions() {
+    if (!bubbleActionsEl || !bubbleEl) return;
+    const r = bubbleEl.getBoundingClientRect();
+    // 버블 위쪽에 가로로 배치
+    bubbleActionsEl.style.left = (r.left + r.width / 2) + 'px';
+    bubbleActionsEl.style.top = (r.top - 6) + 'px';
+}
+function onOutsideAction(e) {
+    if (bubbleActionsEl && !bubbleActionsEl.contains(e.target) && e.target !== bubbleEl && !bubbleEl.contains(e.target)) closeBubbleActions();
+}
+function closeBubbleActions() {
+    document.removeEventListener('pointerdown', onOutsideAction, true);
+    if (bubbleActionsEl) { bubbleActionsEl.remove(); bubbleActionsEl = null; }
+    exitSitMode();   // 아이콘 닫히면 다시 얼굴 둥둥
 }
 function setupBubbleDrag() {
     let active = false, sx = 0, sy = 0, baseL = 0, baseT = 0;
     const onDown = e => {
-        active = true; _bubbleMoved = false;
+        active = true; _bubbleMoved = false; _bubbleDragging = true;
         sx = e.clientX; sy = e.clientY;
         const r = bubbleEl.getBoundingClientRect(); baseL = r.left; baseT = r.top;
         try { bubbleEl.setPointerCapture(e.pointerId); } catch (er) { /* noop */ }
@@ -2109,8 +2233,18 @@ function setupBubbleDrag() {
         }
     };
     const onUp = () => {
-        if (!active) return; active = false;
-        if (_bubbleMoved) { EXT.bubblePos = { left: parseInt(bubbleEl.style.left, 10), top: parseInt(bubbleEl.style.top, 10) }; saveExt(); }
+        if (!active) return; active = false; _bubbleDragging = false;
+        if (_bubbleMoved) {
+            EXT.bubblePos = { left: parseInt(bubbleEl.style.left, 10), top: parseInt(bubbleEl.style.top, 10) }; saveExt();
+            if (EXT.shimeji && _shimeji.on) {
+                const nx = parseInt(bubbleEl.style.left, 10), ny = parseInt(bubbleEl.style.top, 10);
+                const sz = bubbleEl.offsetWidth || 40;
+                const floorY = window.innerHeight - sz - 4;
+                _shimeji.x = isNaN(nx) ? _shimeji.x : nx;
+                if (!isNaN(ny) && ny < floorY - 50) _shimeji.perch = ny;   // 공중에 놓음 → 그 자리 고정
+                else _shimeji.perch = null;                                 // 바닥 근처 → 바닥 걷기 재개
+            }
+        }
     };
     bubbleEl.addEventListener('pointerdown', onDown);
     bubbleEl.addEventListener('pointermove', onMove, { passive: false });
@@ -2139,6 +2273,74 @@ function collapseToBubble() {
     if (fullEl) fullEl.style.display = 'none';
     bubbleEl.style.display = 'flex';
     positionBubble();
+    if (EXT.shimeji) startShimeji(); else stopShimeji();
+}
+
+// ── 시메지 걷기 ──
+let _shimeji = { on: false, raf: null, dir: 1, state: 'walk', until: 0, x: 0, y: 0, lastT: 0, perch: null };
+const SHIMEJI_SPEED = 22;           // px/초 (느긋하게)
+const SHIMEJI_ACTIONS = ['sit', 'look', 'sleep'];   // 가끔 하는 행동
+function startShimeji() {
+    if (!bubbleEl || _shimeji.on) return;
+    if (_bubbleDragging) return;
+    _shimeji.on = true;
+    // 시작 위치 = 현재 버블 위치, 바닥에 안착
+    const sz = bubbleEl.offsetWidth || 40;
+    const r = bubbleEl.getBoundingClientRect();
+    _shimeji.x = r.left;
+    _shimeji.y = window.innerHeight - sz - 4;   // 바닥
+    _shimeji.dir = Math.random() < 0.5 ? -1 : 1;
+    _shimeji.state = 'walk'; _shimeji.until = performance.now() + 2000 + Math.random() * 3000;
+    _shimeji.lastT = performance.now();
+    bubbleEl.style.top = _shimeji.y + 'px'; bubbleEl.style.left = _shimeji.x + 'px';
+    _shimeji.raf = requestAnimationFrame(shimejiTick);
+}
+function stopShimeji() {
+    _shimeji.on = false;
+    if (_shimeji.raf) { cancelAnimationFrame(_shimeji.raf); _shimeji.raf = null; }
+    if (bubbleEl) bubbleEl.style.transform = '';
+}
+function shimejiTick(now) {
+    if (!_shimeji.on || !bubbleEl) return;
+    if (bubbleActionsEl || _bubbleDragging) { _shimeji.raf = requestAnimationFrame(shimejiTick); _shimeji.lastT = now; return; }  // 상호작용 중엔 멈춤
+    const dt = Math.min(0.05, (now - _shimeji.lastT) / 1000); _shimeji.lastT = now;
+    const sz = bubbleEl.offsetWidth || 40;
+    const floorY = window.innerHeight - sz - 4;
+    if (_shimeji.perch == null) _shimeji.y = floorY;           // 바닥 모드
+    else _shimeji.y = Math.min(_shimeji.perch, floorY);        // 놓은 자리 고정(창 줄어들면 클램프)
+    // 상태 전환
+    if (now >= _shimeji.until && _shimeji.state !== 'sitfix') nextShimejiState(now);
+    const walking = _shimeji.state === 'walk';   // 놓은 자리(공중)에서도 그 높이로 좌우 왔다갔다
+    if (walking) {
+        _shimeji.x += _shimeji.dir * SHIMEJI_SPEED * dt;
+        // 벽 만나면 반대로
+        if (_shimeji.x <= 2) { _shimeji.x = 2; _shimeji.dir = 1; }
+        if (_shimeji.x >= window.innerWidth - sz - 2) { _shimeji.x = window.innerWidth - sz - 2; _shimeji.dir = -1; }
+        // 걷는 방향으로 좌우 반전 + 살짝 위아래 통통
+        const bob = Math.sin(now / 120) * 1.2;
+        bubbleEl.style.transform = `scaleX(${_shimeji.dir}) translateY(${bob}px)`;
+    } else {
+        bubbleEl.style.transform = `scaleX(${_shimeji.dir})`;
+    }
+    bubbleEl.style.left = _shimeji.x + 'px';
+    bubbleEl.style.top = _shimeji.y + 'px';
+    bubbleEl.style.right = 'auto'; bubbleEl.style.bottom = 'auto';
+    _shimeji.raf = requestAnimationFrame(shimejiTick);
+}
+function nextShimejiState(now) {
+    // 걷기 → 가끔 행동 → 다시 걷기
+    if (_shimeji.state === 'walk' && Math.random() < 0.5) {
+        const act = pick(SHIMEJI_ACTIONS);
+        _shimeji.state = act;
+        _shimeji.until = now + 1500 + Math.random() * 2500;
+        const expr = act === 'sleep' ? 'sleep' : (act === 'look' ? 'curious' : 'open');
+        bubbleEl.innerHTML = mascotSVG(34, expr);
+    } else {
+        _shimeji.state = 'walk';
+        _shimeji.until = now + 2500 + Math.random() * 3500;
+        if (Math.random() < 0.4) _shimeji.dir *= -1;   // 가끔 방향 전환
+        bubbleEl.innerHTML = mascotSVG(34);
+    }
 }
 
 // ── 확장탭 설정창 ──

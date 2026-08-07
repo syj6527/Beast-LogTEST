@@ -433,3 +433,12 @@
 #beastlog-settings .bls-diag-out { font-family: 'Galmuri11', monospace; font-size: 11px; line-height: 1.7; white-space: pre-wrap; word-break: break-all; background: rgba(0,0,0,.05); border: 1px solid rgba(0,0,0,.18); border-radius: 8px; padding: 10px; margin: 8px 0 0; max-height: 340px; overflow: auto; -webkit-user-select: text; user-select: text; }
 
 @media (prefers-reduced-motion: reduce) { #beastlog-console *, #beastlog-popup *, #beastlog-full *, .bl-pet-emoji, .bl-load-emoji { animation: none !important; transition: none !important; } }
+
+/* ── 시메지: 액션 아이콘 (🍖 밥 / ✋ 쓰다듬기) ── */
+#beastlog-bubble-actions { position: fixed; z-index: 2147483001; transform: translate(-50%, -100%); display: flex; gap: 8px; pointer-events: auto; animation: bl-ba-pop .18s ease; }
+@keyframes bl-ba-pop { from { opacity: 0; transform: translate(-50%, -90%) scale(.8); } to { opacity: 1; transform: translate(-50%, -100%) scale(1); } }
+.bl-ba-btn { width: 38px; height: 38px; border-radius: 50%; border: 2px solid var(--bl-edge, #b5863c); background: var(--bl-card, #fcf4dd); font-size: 18px; line-height: 1; cursor: pointer; box-shadow: 1px 2px 0 var(--bl-shadow, #d9b878); display: flex; align-items: center; justify-content: center; padding: 0; }
+.bl-ba-btn:active { transform: translateY(1px); box-shadow: none; }
+/* ── 시메지: 쓰다듬기 반응 바운스 ── */
+.bl-pet-bounce { animation: bl-pet-bounce .9s ease; }
+@keyframes bl-pet-bounce { 0% { transform: scale(1); } 25% { transform: scale(1.18) translateY(-3px); } 45% { transform: scale(.95) translateY(0); } 65% { transform: scale(1.08) translateY(-1px); } 100% { transform: scale(1); } }
