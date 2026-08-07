@@ -1,11 +1,12 @@
-// 🐯 비스트로그 (Beast Log) v0.50.0 — 상태 0~100%(😊기분·🍖배고픔·⚡체력). 표정: 눈물/자는표정/병아리·판다 전용. 밥: 60%까지 무료+유료메뉴 고정. 작명소(첫무료/변경5만). 펫이름 세로배치+진화명병기.
+// 🐯 비스트로그 (Beast Log) v0.51.0 — 상태 0~100%(😊기분·🍖배고픔·⚡체력). 표정: 눈물/자는표정/병아리·판다 전용. 밥: 60%까지 무료+유료메뉴 고정. 작명소(첫무료/변경5만). 펫이름 세로배치+진화명병기.
 // 경험치: 레벨곡선 60+lv²×15, 선택별 고정값(협력8/도움6/함께4/기웃2/시비-3), 상태별 효율(잘돌볼수록↑), backfire(18%). 알바: {{char}}가 직접(그룹/1카드 다역 대응).
 // 아이템: RP맥락 드랍(등장소품/로어북/맥락생성)+사연(lore)+떡밥(조우유도), 희귀도⚪🟢🔵🟣, bond(💝 {{char}}/{{user}} 연관 깊을수록 귀함). 도감(인물/생물/사물).
 // v0.49 추가: 캐릭터별 저장(새챗에도 데이터 유지), 턴=자체카운터(시뮬 자동출현 폭발 수정), 자동출현 조우/상황 반반 3~4턴, 목록 미리보기3개+전체보기, {{char}}/{{user}} 매크로 치환.
 // v0.50 추가: 마스코트 9종 전면 재디자인 + 표정시스템 정비(호기심/병아리·판다·토끼 전용), 진화 3단계 색/디테일 갱신(백호왕관·구미호·손오공머리띠·현자단안경·도사판다 등), 🎰 즉석복권(깽판 알바 보완책 — 알바비≤1.5만 해금, 1천원/장, 알바당 3장, 꽝90%, {{char}}보이스).
+// v0.51 추가: 🚶 시메지 모드(세팅 토글) — 배경 없이 캐릭터만 바닥 어슬렁+가끔 행동, 탭→✋🍖📖 아이콘+호랑이 앉기(1초 여유 복귀), ✋쓰다듬기 기분+4/💗하트/바운스, 잡아 놓으면 그 자리 고정(그 높이서 좌우 이동), 복권 해금 5만원 이하로 완화.
 // 버전 3곳 동시 갱신: (1) 이 주석, (2) BEASTLOG_VERSION, (3) manifest.json
 
-const BEASTLOG_VERSION = '0.50.0';
+const BEASTLOG_VERSION = '0.51.0';
 const MODULE = 'beast_log';
 let LAST_ERROR = '';
 const DBG_LOG = [];
@@ -154,6 +155,28 @@ function tigerSitSVG(width) {
         }
     }
     return `<svg width="${width}" height="${Math.round(width * s.h / s.w)}" viewBox="0 0 ${s.w} ${s.h}" shape-rendering="crispEdges">${rects}</svg>`;
+}
+// 🐯 호랑이 옆모습 (시메지 걷기용, 사용자 그림 26×28) — 왼쪽 보는 방향
+const SPR_TIGER_WALK = { w: 26, h: 28, pal: { O: '#f6b94d', C: '#fdf6e3', B: '#7a4f28' }, rows: ['.KKK.......KKK............','KOCCK.....KOCCK...........','KOCCKKKKKKKOCCK...........','KOOOOOBOOOOOOOK...........','.KOOOBBBOOOOOK............','.KOOOOBOOOOOOK.........KK.','KOOOOOOOOOOOOOK.......KBK.','KBBOKOOOKOOOBBK.......KOK.','KOOOKOOOKOOOOOK......KBOK.','KBBOOOOOOOOOBBK......KOK..','KOOOOCKCOOOOOOK.....KBOK..','KOOOCCCCOOOOOOKKKKKKKOOK..','.KOOCCCCCOOOOKOBBOBBOOK...','..KKKKKKKKKKKOOOBBOBOOK...','....KOOCCCOOOOOOOBOBOOK...','....KOCCCCCOOOOOOOOOOOK...','....KOCCCCCOOOOOOOOOOOK...','....KOCCCCCOOOOOOOOOOOK...','....KOCCKCCOKKKKKKKOOOK...','....KOOOKOOOK..KOOKOOOK...','....KCC.KCCCK..KCCKCCCK...','.....KKK.KKK....KK.KKK....','..........................','..........................','..........................','..........................','..........................','..........................'] };
+function tigerWalkSVG(width) {
+    const s = SPR_TIGER_WALK;
+    // 실제 그림 영역만(빈 아래줄 제외) 높이 계산
+    let maxY = 0;
+    for (let y = 0; y < s.h; y++) if (s.rows[y].indexOf('K') >= 0 || s.rows[y].replace(/\./g, '').length) maxY = y;
+    const useH = maxY + 1;
+    let rects = '';
+    for (let y = 0; y < useH; y++) {
+        let x = 0;
+        while (x < s.w) {
+            const c = s.rows[y][x];
+            if (!c || c === '.') { x++; continue; }
+            let run = 1; while (x + run < s.w && s.rows[y][x + run] === c) run++;
+            const col = c === 'K' ? BL_INK : (s.pal[c] || BL_INK);
+            rects += `<rect x="${x}" y="${y}" width="${run}" height="1" fill="${col}"/>`;
+            x += run;
+        }
+    }
+    return `<svg width="${width}" height="${Math.round(width * useH / s.w)}" viewBox="0 0 ${s.w} ${useH}" shape-rendering="crispEdges">${rects}</svg>`;
 }
 const EVO_VIS = {
     // 2단계=색 짙어짐, 3단계=고유 변신(컨셉 유지). 키는 새 디자인 팔레트 기준. 표정은 기본 눈 유지(특수표정 빼서 또렷).
@@ -2314,8 +2337,22 @@ function startShimeji() {
     _shimeji.dir = Math.random() < 0.5 ? -1 : 1;
     _shimeji.state = 'walk'; _shimeji.until = performance.now() + 2000 + Math.random() * 3000;
     _shimeji.lastT = performance.now();
+    shimejiSetSprite('walk');   // 호랑이면 옆모습, 그 외 얼굴
     bubbleEl.style.top = _shimeji.y + 'px'; bubbleEl.style.left = _shimeji.x + 'px';
     _shimeji.raf = requestAnimationFrame(shimejiTick);
+}
+// 시메지 상태별 스프라이트 (호랑이만 옆모습/앉기 몸통, 나머지는 얼굴)
+function shimejiSetSprite(state, expr) {
+    if (!bubbleEl) return;
+    const isTiger = EXT.mascot === 'tiger';
+    const prevBottom = bubbleEl.getBoundingClientRect().bottom;
+    if (state === 'walk' && isTiger) bubbleEl.innerHTML = tigerWalkSVG(48);   // 옆모습(넓음)
+    else bubbleEl.innerHTML = mascotSVG(34, expr);   // 행동/기타 = 얼굴
+    // 발바닥(하단) 기준 정렬 — 스프라이트 높이 달라도 바닥 유지
+    const nh = bubbleEl.offsetHeight || 34;
+    const ny = prevBottom - nh;
+    _shimeji.y = ny;
+    bubbleEl.style.top = ny + 'px';
 }
 function stopShimeji() {
     _shimeji.on = false;
@@ -2338,9 +2375,9 @@ function shimejiTick(now) {
         // 벽 만나면 반대로
         if (_shimeji.x <= 2) { _shimeji.x = 2; _shimeji.dir = 1; }
         if (_shimeji.x >= window.innerWidth - sz - 2) { _shimeji.x = window.innerWidth - sz - 2; _shimeji.dir = -1; }
-        // 걷는 방향으로 좌우 반전 + 살짝 위아래 통통
-        const bob = Math.sin(now / 120) * 1.2;
-        bubbleEl.style.transform = `scaleX(${_shimeji.dir}) translateY(${bob}px)`;
+        // 걷는 방향으로 좌우 반전 + 콩콩 바운스 (위로 폴짝폴짝)
+        const hop = -Math.abs(Math.sin(now / 140)) * 4;   // 위로만 튐(음수=위), 진폭 4px
+        bubbleEl.style.transform = `scaleX(${_shimeji.dir}) translateY(${hop}px)`;
     } else {
         bubbleEl.style.transform = `scaleX(${_shimeji.dir})`;
     }
@@ -2356,12 +2393,12 @@ function nextShimejiState(now) {
         _shimeji.state = act;
         _shimeji.until = now + 1500 + Math.random() * 2500;
         const expr = act === 'sleep' ? 'sleep' : (act === 'look' ? 'curious' : 'open');
-        bubbleEl.innerHTML = mascotSVG(34, expr);
+        shimejiSetSprite(act, expr);   // 행동 = 얼굴 표정
     } else {
         _shimeji.state = 'walk';
         _shimeji.until = now + 2500 + Math.random() * 3500;
         if (Math.random() < 0.4) _shimeji.dir *= -1;   // 가끔 방향 전환
-        bubbleEl.innerHTML = mascotSVG(34);
+        shimejiSetSprite('walk');   // 걷기 = 옆모습(호랑이)
     }
 }
 
