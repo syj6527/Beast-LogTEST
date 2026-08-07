@@ -449,3 +449,7 @@
 /* ── 쓰다듬기 하트 이펙트 ── */
 .bl-heart-fx { position: fixed; z-index: 2147483002; font-size: 16px; pointer-events: none; animation: bl-heart-up 1s ease-out forwards; }
 @keyframes bl-heart-up { 0% { opacity: 0; transform: translate(-50%, 0) scale(.6); } 20% { opacity: 1; transform: translate(-50%, -8px) scale(1.1); } 100% { opacity: 0; transform: translate(-50%, -34px) scale(1); } }
+
+/* ── 시메지: 착지 바운스 (놓으면 폴짝 → 안착) ── */
+.bl-land-bounce { animation: bl-land .45s ease-out; }
+@keyframes bl-land { 0% { transform: translateY(-10px) scaleY(1.05); } 40% { transform: translateY(0) scaleY(.9); } 70% { transform: translateY(-3px) scaleY(1.02); } 100% { transform: translateY(0) scaleY(1); } }

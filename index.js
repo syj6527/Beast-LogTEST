@@ -158,6 +158,24 @@ function tigerSitSVG(width) {
 }
 // 🐯 호랑이 옆모습 (시메지 걷기용, 사용자 그림 26×28) — 왼쪽 보는 방향
 const SPR_TIGER_WALK = { w: 26, h: 28, pal: { O: '#f6b94d', C: '#fdf6e3', B: '#7a4f28' }, rows: ['.KKK.......KKK............','KOCCK.....KOCCK...........','KOCCKKKKKKKOCCK...........','KOOOOOBOOOOOOOK...........','.KOOOBBBOOOOOK............','.KOOOOBOOOOOOK.........KK.','KOOOOOOOOOOOOOK.......KBK.','KBBOKOOOKOOOBBK.......KOK.','KOOOKOOOKOOOOOK......KBOK.','KBBOOOOOOOOOBBK......KOK..','KOOOOCKCOOOOOOK.....KBOK..','KOOOCCCCOOOOOOKKKKKKKOOK..','.KOOCCCCCOOOOKOBBOBBOOK...','..KKKKKKKKKKKOOOBBOBOOK...','....KOOCCCOOOOOOOBOBOOK...','....KOCCCCCOOOOOOOOOOOK...','....KOCCCCCOOOOOOOOOOOK...','....KOCCCCCOOOOOOOOOOOK...','....KOCCKCCOKKKKKKKOOOK...','....KOOOKOOOK..KOOKOOOK...','....KCC.KCCCK..KCCKCCCK...','.....KKK.KKK....KK.KKK....','..........................','..........................','..........................','..........................','..........................','..........................'] };
+// 🐯 호랑이 정면 서있기 (들어올렸을 때, 두 발로 선 SD, 사용자 그림 15×28)
+const SPR_TIGER_HANG = { w: 15, h: 28, pal: { O: '#f6b94d', C: '#fdf6e3', B: '#7a4f28' }, rows: ['......KKK......','.KKK.KOOOK.KKK.','KOCCKOOOOOKOCCK','KOCCKKKKKKKOCCK','KOOOOOOBOOOOOOK','.KOOOOBBBOOOOK.','.KOOOOOBOOOOOK.','KOOOOOOOOOOOOOK','KBBOOOOOOOOOBBK','KOOOOKOOOKOOOOK','KBBOOKOOOKOOBBK','KOOOOOCKCOOOOOK','KOOOOCCCCCOOOOK','.KOOOCCCCCOOOK.','.KKOOOOOOOOOKK.','KOOOOOKCKOOOOOK','KBKOOOKCKOOOKBK','KOKOOOKCKOOOKOK','KOK.CCKCKCC.KOK','KBOKKKCCCKKKOBK','KOOOOCCCCCOOOOK','KOOOOOCCCOOOOOK','KOOOOOOKOOOOOOK','CKOOOOOKOOOOOKC','.KOOOOOKOOOOOK.','.KOOOOOKOOOOOK.','..KCCCK.KCCCK..','...KKK...KKK...'] };
+function tigerHangSVG(width) {
+    const s = SPR_TIGER_HANG;
+    let rects = '';
+    for (let y = 0; y < s.h; y++) {
+        let x = 0;
+        while (x < s.w) {
+            const c = s.rows[y][x];
+            if (!c || c === '.') { x++; continue; }
+            let run = 1; while (x + run < s.w && s.rows[y][x + run] === c) run++;
+            const col = c === 'K' ? BL_INK : (s.pal[c] || BL_INK);
+            rects += `<rect x="${x}" y="${y}" width="${run}" height="1" fill="${col}"/>`;
+            x += run;
+        }
+    }
+    return `<svg width="${width}" height="${Math.round(width * s.h / s.w)}" viewBox="0 0 ${s.w} ${s.h}" shape-rendering="crispEdges">${rects}</svg>`;
+}
 function tigerWalkSVG(width) {
     const s = SPR_TIGER_WALK;
     // 실제 그림 영역만(빈 아래줄 제외) 높이 계산
@@ -2255,6 +2273,26 @@ function closeBubbleActions() {
     if (bubbleActionsEl) { bubbleActionsEl.remove(); bubbleActionsEl = null; }
     exitSitMode();   // 아이콘 닫히면 다시 얼굴 둥둥
 }
+// 들어올림: 정면 서있기(두 발) + 좌우 대롱대롱 흔들
+let _hangRAF = null, _hangT0 = 0;
+function startHangWobble() {
+    if (!bubbleEl || _hangRAF) return;
+    if (EXT.mascot === 'tiger') bubbleEl.innerHTML = tigerHangSVG(30);   // 두 발로 선 모습
+    _hangT0 = performance.now();
+    const tick = (now) => {
+        if (!_bubbleDragging) { _hangRAF = null; return; }
+        const t = (now - _hangT0) / 1000;
+        const ang = Math.sin(t * 5) * 10;   // 좌우 ±10도 가볍게 대롱대롱
+        bubbleEl.style.transform = `rotate(${ang}deg)`;
+        bubbleEl.style.transformOrigin = '50% 15%';   // 위쪽(목덜미) 잡힌 것처럼
+        _hangRAF = requestAnimationFrame(tick);
+    };
+    _hangRAF = requestAnimationFrame(tick);
+}
+function stopHangWobble() {
+    if (_hangRAF) { cancelAnimationFrame(_hangRAF); _hangRAF = null; }
+    if (bubbleEl) { bubbleEl.style.transform = ''; bubbleEl.style.transformOrigin = ''; }
+}
 function setupBubbleDrag() {
     let active = false, sx = 0, sy = 0, baseL = 0, baseT = 0;
     const onDown = e => {
@@ -2266,7 +2304,10 @@ function setupBubbleDrag() {
     const onMove = e => {
         if (!active) return;
         const dx = e.clientX - sx, dy = e.clientY - sy;
-        if (!_bubbleMoved && Math.abs(dx) + Math.abs(dy) > 5) _bubbleMoved = true;
+        if (!_bubbleMoved && Math.abs(dx) + Math.abs(dy) > 5) {
+            _bubbleMoved = true;
+            if (EXT.shimeji) startHangWobble();   // 들어올림 → 대롱대롱 서있기 + 좌우 흔들
+        }
         if (_bubbleMoved) {
             e.preventDefault();
             const sz = bubbleEl.offsetWidth || 52;
@@ -2278,6 +2319,8 @@ function setupBubbleDrag() {
     };
     const onUp = () => {
         if (!active) return; active = false; _bubbleDragging = false;
+        const wasHang = _hangRAF != null;
+        stopHangWobble();   // 대롱대롱 해제
         if (_bubbleMoved) {
             EXT.bubblePos = { left: parseInt(bubbleEl.style.left, 10), top: parseInt(bubbleEl.style.top, 10) }; saveExt();
             if (EXT.shimeji && _shimeji.on) {
@@ -2287,6 +2330,12 @@ function setupBubbleDrag() {
                 _shimeji.x = isNaN(nx) ? _shimeji.x : nx;
                 if (!isNaN(ny) && ny < floorY - 50) _shimeji.perch = ny;   // 공중에 놓음 → 그 자리 고정
                 else _shimeji.perch = null;                                 // 바닥 근처 → 바닥 걷기 재개
+                _shimeji.state = 'walk'; _shimeji.until = performance.now() + 400;   // 놓으면 곧 다시 걷기
+                shimejiSetSprite('walk');
+                if (wasHang) {   // 들고 있다 놓음 → 착지 폴짝
+                    bubbleEl.classList.add('bl-land-bounce');
+                    setTimeout(() => { if (bubbleEl) bubbleEl.classList.remove('bl-land-bounce'); }, 460);
+                }
             }
         }
     };
@@ -2347,6 +2396,7 @@ function shimejiSetSprite(state, expr) {
     const isTiger = EXT.mascot === 'tiger';
     const prevBottom = bubbleEl.getBoundingClientRect().bottom;
     if (state === 'walk' && isTiger) bubbleEl.innerHTML = tigerWalkSVG(48);   // 옆모습(넓음)
+    else if (state === 'sit' && isTiger) bubbleEl.innerHTML = tigerSitSVG(34);   // 앉기 몸통
     else bubbleEl.innerHTML = mascotSVG(34, expr);   // 행동/기타 = 얼굴
     // 발바닥(하단) 기준 정렬 — 스프라이트 높이 달라도 바닥 유지
     const nh = bubbleEl.offsetHeight || 34;
@@ -2375,11 +2425,15 @@ function shimejiTick(now) {
         // 벽 만나면 반대로
         if (_shimeji.x <= 2) { _shimeji.x = 2; _shimeji.dir = 1; }
         if (_shimeji.x >= window.innerWidth - sz - 2) { _shimeji.x = window.innerWidth - sz - 2; _shimeji.dir = -1; }
-        // 걷는 방향으로 좌우 반전 + 콩콩 바운스 (위로 폴짝폴짝)
-        const hop = -Math.abs(Math.sin(now / 140)) * 4;   // 위로만 튐(음수=위), 진폭 4px
-        bubbleEl.style.transform = `scaleX(${_shimeji.dir}) translateY(${hop}px)`;
+        // 옆모습은 '왼쪽 보는' 그림 → 오른쪽(dir=1) 이동 시 좌우반전해야 진행방향을 봄
+        const face = (EXT.mascot === 'tiger') ? -_shimeji.dir : _shimeji.dir;
+        const hop = -Math.abs(Math.sin(now / 140)) * 4;   // 콩콩 (위로 폴짝)
+        bubbleEl.style.transform = `scaleX(${face}) translateY(${hop}px)`;
+    } else if (_shimeji.state === 'rest' || _shimeji.state === 'sitfix') {
+        bubbleEl.style.transform = '';   // 앉기 = 정면 몸통, 반전 안 함
     } else {
-        bubbleEl.style.transform = `scaleX(${_shimeji.dir})`;
+        const face = (EXT.mascot === 'tiger') ? -_shimeji.dir : _shimeji.dir;
+        bubbleEl.style.transform = `scaleX(${face})`;
     }
     bubbleEl.style.left = _shimeji.x + 'px';
     bubbleEl.style.top = _shimeji.y + 'px';
@@ -2387,18 +2441,33 @@ function shimejiTick(now) {
     _shimeji.raf = requestAnimationFrame(shimejiTick);
 }
 function nextShimejiState(now) {
-    // 걷기 → 가끔 행동 → 다시 걷기
+    const isTiger = EXT.mascot === 'tiger';
+    if (isTiger) {
+        // 호랑이: 걷기(옆모습) ↔ 가끔 멈춤(앉기 몸통). 얼굴 깜빡 없음
+        if (_shimeji.state === 'walk' && Math.random() < 0.35) {
+            _shimeji.state = 'rest';
+            _shimeji.until = now + 1200 + Math.random() * 1800;
+            shimejiSetSprite('sit');   // 앉은 몸통
+        } else {
+            _shimeji.state = 'walk';
+            _shimeji.until = now + 2500 + Math.random() * 3500;
+            if (Math.random() < 0.4) _shimeji.dir *= -1;
+            shimejiSetSprite('walk');   // 옆모습
+        }
+        return;
+    }
+    // 다른 동물: 얼굴 걷기 + 가끔 행동(두리번/잠)
     if (_shimeji.state === 'walk' && Math.random() < 0.5) {
         const act = pick(SHIMEJI_ACTIONS);
         _shimeji.state = act;
         _shimeji.until = now + 1500 + Math.random() * 2500;
         const expr = act === 'sleep' ? 'sleep' : (act === 'look' ? 'curious' : 'open');
-        shimejiSetSprite(act, expr);   // 행동 = 얼굴 표정
+        shimejiSetSprite(act, expr);
     } else {
         _shimeji.state = 'walk';
         _shimeji.until = now + 2500 + Math.random() * 3500;
-        if (Math.random() < 0.4) _shimeji.dir *= -1;   // 가끔 방향 전환
-        shimejiSetSprite('walk');   // 걷기 = 옆모습(호랑이)
+        if (Math.random() < 0.4) _shimeji.dir *= -1;
+        shimejiSetSprite('walk');
     }
 }
 
