@@ -700,13 +700,25 @@ function onPet() {
     playPetReaction();                 // 반응 애니메이션(happy 표정 잠깐)
     renderAll();
 }
-// 쓰다듬기 반응: 잠깐 happy 표정 + 통통 튀는 애니메이션
+// 쓰다듬기 반응: 잠깐 happy 표정 + 통통 튀는 애니메이션 + 💗 하트
 let _petAnimTO = null;
+function spawnHeart() {
+    if (!bubbleEl) return;
+    const r = bubbleEl.getBoundingClientRect();
+    const h = document.createElement('div');
+    h.className = 'bl-heart-fx';
+    h.textContent = '💗';
+    h.style.left = (r.left + r.width / 2) + 'px';
+    h.style.top = (r.top + r.height * 0.35) + 'px';   // 캐릭터 몸에서 떠오름 (위 아이콘과 안 겹치게)
+    (document.documentElement || document.body).appendChild(h);
+    setTimeout(() => h.remove(), 1100);
+}
 function playPetReaction() {
     if (bubbleEl && bubbleEl.style.display !== 'none') {
         const sitting = _shimeji.state === 'sitfix';   // 앉은 상태(아이콘 열림)면 앉은 채로 바운스
         if (!sitting) bubbleEl.innerHTML = mascotSVG(34, 'happy');   // 걷기 중이면 웃는 얼굴
         bubbleEl.classList.add('bl-pet-bounce');
+        spawnHeart();   // 💗 하트 뿅
         if (_petAnimTO) clearTimeout(_petAnimTO);
         _petAnimTO = setTimeout(() => {
             if (!bubbleEl) return;
@@ -2162,23 +2174,30 @@ function shimejiSwapSprite(html) {
     const nh = bubbleEl.offsetHeight || 34;
     bubbleEl.style.top = Math.max(2, bottom - nh) + 'px';
 }
+let _sitExitTO = null;
 function enterSitMode() {
     if (!EXT.shimeji || !bubbleEl) return;
+    if (_sitExitTO) { clearTimeout(_sitExitTO); _sitExitTO = null; }   // 복귀 대기 중 다시 탭 → 취소
     _shimeji.state = 'sitfix';
     // 호랑이면 앉은 모습(몸통), 다른 동물은 얼굴 그대로 (호랑이만 몸통 테스트 중)
     if (EXT.mascot === 'tiger') shimejiSwapSprite(tigerSitSVG(34));
     bubbleEl.style.transform = `scaleX(${_shimeji.dir})`;
 }
 function exitSitMode() {
-    if (!bubbleEl) return;
-    shimejiSwapSprite(mascotSVG(34));
-    if (EXT.shimeji && _shimeji.on) {
-        _shimeji.state = 'walk';
-        _shimeji.until = performance.now() + 2000 + Math.random() * 2000;
-        _shimeji.lastT = performance.now();
-        const r = bubbleEl.getBoundingClientRect();
-        _shimeji.x = r.left;
-    }
+    // 아이콘 닫힌 뒤 1초 정도 앉은 자세 유지하다가 얼굴 복귀
+    if (_sitExitTO) clearTimeout(_sitExitTO);
+    _sitExitTO = setTimeout(() => {
+        _sitExitTO = null;
+        if (!bubbleEl || bubbleActionsEl) return;   // 그 사이 다시 탭했으면 유지
+        shimejiSwapSprite(mascotSVG(34));
+        if (EXT.shimeji && _shimeji.on) {
+            _shimeji.state = 'walk';
+            _shimeji.until = performance.now() + 2000 + Math.random() * 2000;
+            _shimeji.lastT = performance.now();
+            const r = bubbleEl.getBoundingClientRect();
+            _shimeji.x = r.left;
+        }
+    }, 1000);
 }
 function toggleBubbleActions() {
     if (bubbleActionsEl) { closeBubbleActions(); return; }
@@ -2188,11 +2207,13 @@ function toggleBubbleActions() {
     bubbleActionsEl.id = 'beastlog-bubble-actions';
     bubbleActionsEl.innerHTML = `
       <button class="bl-ba-btn bl-ba-pet" title="쓰다듬기">✋</button>
-      <button class="bl-ba-btn bl-ba-feed" title="밥 주기">🍖</button>`;
+      <button class="bl-ba-btn bl-ba-feed" title="밥 주기">🍖</button>
+      <button class="bl-ba-btn bl-ba-open" title="비스트로그 열기">📖</button>`;
     (document.documentElement || document.body).appendChild(bubbleActionsEl);
     positionBubbleActions();
     bubbleActionsEl.querySelector('.bl-ba-pet').addEventListener('click', e => { e.stopPropagation(); onPet(); });
     bubbleActionsEl.querySelector('.bl-ba-feed').addEventListener('click', e => { e.stopPropagation(); onFeed(); });
+    bubbleActionsEl.querySelector('.bl-ba-open').addEventListener('click', e => { e.stopPropagation(); closeBubbleActions(); showFull(); });
     // 바깥 클릭 시 닫기
     setTimeout(() => document.addEventListener('pointerdown', onOutsideAction, true), 0);
 }
@@ -2284,6 +2305,7 @@ function startShimeji() {
     if (!bubbleEl || _shimeji.on) return;
     if (_bubbleDragging) return;
     _shimeji.on = true;
+    bubbleEl.classList.add('bl-shimeji');   // 배경 없이 캐릭터만
     // 시작 위치 = 현재 버블 위치, 바닥에 안착
     const sz = bubbleEl.offsetWidth || 40;
     const r = bubbleEl.getBoundingClientRect();
@@ -2298,7 +2320,7 @@ function startShimeji() {
 function stopShimeji() {
     _shimeji.on = false;
     if (_shimeji.raf) { cancelAnimationFrame(_shimeji.raf); _shimeji.raf = null; }
-    if (bubbleEl) bubbleEl.style.transform = '';
+    if (bubbleEl) { bubbleEl.style.transform = ''; bubbleEl.classList.remove('bl-shimeji'); }
 }
 function shimejiTick(now) {
     if (!_shimeji.on || !bubbleEl) return;
