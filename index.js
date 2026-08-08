@@ -1,4 +1,4 @@
-// 🐯 비스트로그 (Beast Log) v0.57.0 — 상태 0~100%(😊기분·🍖배고픔·⚡체력). 표정: 눈물/자는표정/병아리·판다 전용. 밥: 60%까지 무료+유료메뉴 고정. 작명소(첫무료/변경5만). 펫이름 세로배치+진화명병기.
+// 🐯 비스트로그 (Beast Log) v0.57.1 — 상태 0~100%(😊기분·🍖배고픔·⚡체력). 표정: 눈물/자는표정/병아리·판다 전용. 밥: 60%까지 무료+유료메뉴 고정. 작명소(첫무료/변경5만). 펫이름 세로배치+진화명병기.
 // 경험치: 레벨곡선 60+lv²×15, 선택별 고정값(협력8/도움6/함께4/기웃2/시비-3), 상태별 효율(잘돌볼수록↑), backfire(18%). 알바: {{char}}가 직접(그룹/1카드 다역 대응).
 // 아이템: RP맥락 드랍(등장소품/로어북/맥락생성)+사연(lore)+떡밥(조우유도), 희귀도⚪🟢🔵🟣, bond(💝 {{char}}/{{user}} 연관 깊을수록 귀함). 도감(인물/생물/사물).
 // v0.49 추가: 캐릭터별 저장(새챗에도 데이터 유지), 턴=자체카운터(시뮬 자동출현 폭발 수정), 자동출현 조우/상황 반반 3~4턴, 목록 미리보기3개+전체보기, {{char}}/{{user}} 매크로 치환.
@@ -10,9 +10,10 @@
 // v0.55 추가: 표정을 몸통 위에 얹도록 수정(머리만 뜨던 버그 패치), 정면앉기는 멍한 원본 표정 유지, 중력을 '놓은 자리서 일정 거리만 낙하 후 그 높이 유지'로 변경, 정면앉기 그림 갱신.
 // v0.56 추가: 걷는 중에도 표정 유지(웃음/무표정/울음), 시메지 컨테이너 리플로우 제거로 표정 전환 시 깜빡임(머리만 뜨던 현상) 해결, 걷다가 가끔 방긋.
 // v0.57 추가: 걷기+표정을 실시간 합성이 아닌 완성 스프라이트(사용자가 직접 그린 걷기1/2 × 웃음/무표정/울음 6종)로 교체 — 걷는 중 표정 전환 시 얼굴만 뜨던 깜빡임 근본 해결. 우는 걷기는 눈물 위치 다른 2프레임 애니.
+// v0.57.1 수정: 대가리만 뜨던 근본 원인 해결 — blink 타이머(setMascotEls)와 renderAll이 시메지 상태 무시하고 버블을 얼굴로 덮어쓰던 렌더링 레이스 차단. 이제 시메지 ON이면 상태 머신이 버블 렌더 전권.
 // 버전 3곳 동시 갱신: (1) 이 주석, (2) BEASTLOG_VERSION, (3) manifest.json
 
-const BEASTLOG_VERSION = '0.57.0';
+const BEASTLOG_VERSION = '0.57.1';
 const MODULE = 'beast_log';
 let LAST_ERROR = '';
 const DBG_LOG = [];
@@ -459,7 +460,8 @@ function setMascotEls(expr) {
     };
     if (consoleEl) apply(consoleEl.querySelector('.bl-pet-emoji-mini'), 30);
     if (fullEl && fullEl.style.display !== 'none') apply(fullEl.querySelector('.bl-pet-emoji'), 72);
-    if (bubbleEl && bubbleEl.style.display !== 'none') apply(bubbleEl, 34);
+    // 시메지가 버블을 쓰는 중이면 상태 머신에 렌더링 전권을 줌 (얼굴 렌더러 난입 차단)
+    if (bubbleEl && bubbleEl.style.display !== 'none' && !(EXT.shimeji && _shimeji.on)) apply(bubbleEl, 34);
 }
 const SLEEP_QUIET_MS = 120000;      // 2분간 채팅·조작 없으면 졸기 시작
 const HUNGER_DECAY_MS = 3 * 60 * 60 * 1000;  // 3시간당
@@ -2314,7 +2316,7 @@ function moreBtn(key, total) {
 function showMini() { listView = 'main'; if (bubbleEl) bubbleEl.style.display = 'none'; if (consoleEl) consoleEl.style.display = ''; if (fullEl) fullEl.style.display = 'none'; ensureMounted(); applyConsolePos(); renderConsole(); }
 function showFull() { listView = 'main'; buildFull(); if (bubbleEl) bubbleEl.style.display = 'none'; if (consoleEl) consoleEl.style.display = 'none'; fullEl.style.display = 'flex'; if (fullEl.classList) fullEl.classList.remove('bl-soloview'); renderFull(); }
 function hideHud() { if (consoleEl) consoleEl.style.display = 'none'; if (fullEl) fullEl.style.display = 'none'; }
-function renderAll() { renderConsole(); if (fullEl) renderFull(); if (bubbleEl) bubbleEl.innerHTML = mascotSVG(34); }
+function renderAll() { renderConsole(); if (fullEl) renderFull(); if (bubbleEl && !(EXT.shimeji && _shimeji.on)) bubbleEl.innerHTML = mascotSVG(34); }
 
 let bubbleEl = null;
 let _bubbleMoved = false;
