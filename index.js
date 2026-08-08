@@ -1,4 +1,4 @@
-// 🐯 비스트로그 (Beast Log) v0.55.3 — 상태 0~100%(😊기분·🍖배고픔·⚡체력). 표정: 눈물/자는표정/병아리·판다 전용. 밥: 60%까지 무료+유료메뉴 고정. 작명소(첫무료/변경5만). 펫이름 세로배치+진화명병기.
+// 🐯 비스트로그 (Beast Log) v0.56.0 — 상태 0~100%(😊기분·🍖배고픔·⚡체력). 표정: 눈물/자는표정/병아리·판다 전용. 밥: 60%까지 무료+유료메뉴 고정. 작명소(첫무료/변경5만). 펫이름 세로배치+진화명병기.
 // 경험치: 레벨곡선 60+lv²×15, 선택별 고정값(협력8/도움6/함께4/기웃2/시비-3), 상태별 효율(잘돌볼수록↑), backfire(18%). 알바: {{char}}가 직접(그룹/1카드 다역 대응).
 // 아이템: RP맥락 드랍(등장소품/로어북/맥락생성)+사연(lore)+떡밥(조우유도), 희귀도⚪🟢🔵🟣, bond(💝 {{char}}/{{user}} 연관 깊을수록 귀함). 도감(인물/생물/사물).
 // v0.49 추가: 캐릭터별 저장(새챗에도 데이터 유지), 턴=자체카운터(시뮬 자동출현 폭발 수정), 자동출현 조우/상황 반반 3~4턴, 목록 미리보기3개+전체보기, {{char}}/{{user}} 매크로 치환.
@@ -8,9 +8,10 @@
 // v0.53 추가: 시메지 호랑이 새 스프라이트 6종(서있기/걷기1·2/앉기/눕기/목잡힘) + 표정 3종(웃음/무표정/울기), 걷기 프레임 교차 애니, 랜덤 앉기·눕기, 방치 시 졸기, 배고프면 울상, 쓰다듬/밥 주면 웃음, 들어올리면 목덜미 잡힌 자세, 놓으면 중력 낙하+착지 바운스.
 // v0.54 추가: 눕기/졸기 랜덤화, 걷기 중 표정 표시(배고프면 울며 걷기), 눈물 뚝뚝 애니메이션, 정면앉기 꼬리 추가, 새로고침·재접속해도 시메지 유지(버블 모드 자동 복원).
 // v0.55 추가: 표정을 몸통 위에 얹도록 수정(머리만 뜨던 버그 패치), 정면앉기는 멍한 원본 표정 유지, 중력을 '놓은 자리서 일정 거리만 낙하 후 그 높이 유지'로 변경, 정면앉기 그림 갱신.
+// v0.56 추가: 걷는 중에도 표정 유지(웃음/무표정/울음), 시메지 컨테이너 리플로우 제거로 표정 전환 시 깜빡임(머리만 뜨던 현상) 해결, 걷다가 가끔 방긋.
 // 버전 3곳 동시 갱신: (1) 이 주석, (2) BEASTLOG_VERSION, (3) manifest.json
 
-const BEASTLOG_VERSION = '0.55.3';
+const BEASTLOG_VERSION = '0.56.0';
 const MODULE = 'beast_log';
 let LAST_ERROR = '';
 const DBG_LOG = [];
@@ -2491,7 +2492,7 @@ function collapseToBubble() {
 }
 
 // ── 시메지 걷기 ──
-let _shimeji = { on: false, raf: null, dir: 1, state: 'walk', until: 0, x: 0, y: 0, vy: 0, lastT: 0, frame: 1, frameT: 0, idleSince: 0, perch: null, fallTo: null };
+let _shimeji = { on: false, raf: null, dir: 1, state: 'walk', until: 0, x: 0, y: 0, vy: 0, lastT: 0, frame: 1, frameT: 0, idleSince: 0, perch: null, fallTo: null, expr: null };
 const SHIMEJI_SPEED = 22;           // px/초 (느긋하게)
 const SHIMEJI_GRAV = 1400;          // 중력 가속도 px/s² (놓으면 툭 떨어짐)
 const SHIMEJI_DROP = 70;            // 놓으면 떨어지는 거리(px) — 바닥까지가 아니라 이만큼만
@@ -2521,6 +2522,7 @@ function startShimeji() {
 const TG_SIZE = { stand: 46, walk1: 46, walk2: 46, sit: 44, lie: 54, hang: 26, frontsit: 36, face: 34 };
 function shimejiSetSprite(state, expr) {
     if (!bubbleEl) return;
+    _shimeji.expr = expr || null;   // 현재 표정 기억 (걷기 프레임 교체 때도 유지됨)
     const isTiger = EXT.mascot === 'tiger';
     if (isTiger) {
         const body = SPR_TG[state] ? state : 'stand';   // 실제 포즈(몸통)
@@ -2589,13 +2591,14 @@ function shimejiTick(now) {
         // 벽 만나면 반대로
         if (_shimeji.x <= 2) { _shimeji.x = 2; _shimeji.dir = 1; }
         if (_shimeji.x >= window.innerWidth - sz - 2) { _shimeji.x = window.innerWidth - sz - 2; _shimeji.dir = -1; }
-        // 걷기 프레임 교차 (walk1 ↔ walk2) — 걷기 상태에서만!
+        // 걷기 프레임 교차 (walk1 ↔ walk2) — 현재 표정(_shimeji.expr) 유지하며
         if (EXT.mascot === 'tiger' && now - _shimeji.frameT >= SHIMEJI_FRAME_MS) {
             _shimeji.frameT = now;
             _shimeji.frame = _shimeji.frame === 1 ? 2 : 1;
             const hungry = (STATE.hunger != null && STATE.hunger < 30);
-            const expr = hungry ? 'cry' : null;   // 배고프면 걸으면서도 울상
-            bubbleEl.innerHTML = expr ? tgSVGExpr('walk' + _shimeji.frame, expr, TG_SIZE.walk1)
+            // 배고프면 울상, 아니면 현재 지정된 표정(_shimeji.expr), 그것도 없으면 기본
+            const expr = hungry ? 'cry' : (_shimeji.expr || null);
+            bubbleEl.innerHTML = (expr && SPR_TG_FACE[expr]) ? tgSVGExpr('walk' + _shimeji.frame, expr, TG_SIZE.walk1)
                                       : tgSVG('walk' + _shimeji.frame, TG_SIZE.walk1);
             if (hungry) startCrying(); else stopCrying();
         }
@@ -2637,7 +2640,8 @@ function nextShimejiState(now) {
             _shimeji.until = now + 2500 + Math.random() * 3500;
             if (Math.random() < 0.4) _shimeji.dir *= -1;
             _shimeji.frame = 1; _shimeji.frameT = now;
-            shimejiSetSprite('walk1');
+            _shimeji.expr = (Math.random() < 0.25) ? 'happy' : null;   // 가끔 걸으면서 방긋
+            shimejiSetSprite('walk1', _shimeji.expr);
         }
         return;
     }
