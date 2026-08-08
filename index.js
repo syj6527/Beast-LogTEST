@@ -1,4 +1,4 @@
-// 🐯 비스트로그 (Beast Log) v0.55.2 — 상태 0~100%(😊기분·🍖배고픔·⚡체력). 표정: 눈물/자는표정/병아리·판다 전용. 밥: 60%까지 무료+유료메뉴 고정. 작명소(첫무료/변경5만). 펫이름 세로배치+진화명병기.
+// 🐯 비스트로그 (Beast Log) v0.55.3 — 상태 0~100%(😊기분·🍖배고픔·⚡체력). 표정: 눈물/자는표정/병아리·판다 전용. 밥: 60%까지 무료+유료메뉴 고정. 작명소(첫무료/변경5만). 펫이름 세로배치+진화명병기.
 // 경험치: 레벨곡선 60+lv²×15, 선택별 고정값(협력8/도움6/함께4/기웃2/시비-3), 상태별 효율(잘돌볼수록↑), backfire(18%). 알바: {{char}}가 직접(그룹/1카드 다역 대응).
 // 아이템: RP맥락 드랍(등장소품/로어북/맥락생성)+사연(lore)+떡밥(조우유도), 희귀도⚪🟢🔵🟣, bond(💝 {{char}}/{{user}} 연관 깊을수록 귀함). 도감(인물/생물/사물).
 // v0.49 추가: 캐릭터별 저장(새챗에도 데이터 유지), 턴=자체카운터(시뮬 자동출현 폭발 수정), 자동출현 조우/상황 반반 3~4턴, 목록 미리보기3개+전체보기, {{char}}/{{user}} 매크로 치환.
@@ -10,7 +10,7 @@
 // v0.55 추가: 표정을 몸통 위에 얹도록 수정(머리만 뜨던 버그 패치), 정면앉기는 멍한 원본 표정 유지, 중력을 '놓은 자리서 일정 거리만 낙하 후 그 높이 유지'로 변경, 정면앉기 그림 갱신.
 // 버전 3곳 동시 갱신: (1) 이 주석, (2) BEASTLOG_VERSION, (3) manifest.json
 
-const BEASTLOG_VERSION = '0.55.2';
+const BEASTLOG_VERSION = '0.55.3';
 const MODULE = 'beast_log';
 let LAST_ERROR = '';
 const DBG_LOG = [];
@@ -863,8 +863,8 @@ function playFeedReaction() {   // 밥 먹으면 😊 웃음
     if (!bubbleEl || !EXT.shimeji || EXT.mascot !== 'tiger') return;
     stopCrying();   // 밥 먹었으니 눈물 뚝
     _shimeji.idleSince = performance.now();
+    _shimeji.state = 'rest'; _shimeji.until = performance.now() + 2000;   // 상태 먼저 바꿔서 tick 걷기 방지
     shimejiSetSprite('sit', 'happy');
-    _shimeji.state = 'rest'; _shimeji.until = performance.now() + 2000;
     bubbleEl.classList.add('bl-pet-bounce');
     spawnHeart();
     setTimeout(() => { if (bubbleEl) bubbleEl.classList.remove('bl-pet-bounce'); }, 900);
@@ -873,8 +873,8 @@ function playPetReaction() {
     if (bubbleEl && bubbleEl.style.display !== 'none') {
         _shimeji.idleSince = performance.now();   // 만졌으니 졸기 타이머 리셋
         if (EXT.shimeji && EXT.mascot === 'tiger') {
-            shimejiSetSprite('sit', 'happy');     // 😊 웃는 얼굴
-            _shimeji.state = 'rest'; _shimeji.until = performance.now() + 1600;
+            _shimeji.state = 'rest'; _shimeji.until = performance.now() + 1600;   // 상태 먼저 (tick 걷기 방지)
+            shimejiSetSprite('sit', 'happy');     // 😊 웃는 몸통
         } else if (_shimeji.state !== 'sitfix') {
             bubbleEl.innerHTML = mascotSVG(34, 'happy');
         }
@@ -2526,8 +2526,10 @@ function shimejiSetSprite(state, expr) {
         const body = SPR_TG[state] ? state : 'stand';   // 실제 포즈(몸통)
         if (expr && SPR_TG_FACE[expr] && tgFaceCompatible(body)) {
             bubbleEl.innerHTML = tgSVGExpr(body, expr, TG_SIZE[body] || 46);   // 몸통 + 표정
+            if (window.BL_SHIMEJI_DEBUG) console.log('[시메지] 몸통+표정:', body, expr, '높이', SPR_TG[body].h);
         } else {
             bubbleEl.innerHTML = tgSVG(body, TG_SIZE[body] || 46);            // 몸통만
+            if (window.BL_SHIMEJI_DEBUG) console.log('[시메지] 몸통만:', body);
         }
     } else {
         bubbleEl.innerHTML = mascotSVG(34, expr);   // 다른 마스코트는 얼굴만
@@ -2601,9 +2603,9 @@ function shimejiTick(now) {
         const face = (EXT.mascot === 'tiger') ? -_shimeji.dir : _shimeji.dir;
         bubbleEl.style.transform = `scaleX(${face})`;
     } else {
-        // 걷기가 아닌 모든 상태(rest/lie/doze/sitfix): 스프라이트는 이미 세팅됨, transform만 관리
-        // (tick이 innerHTML을 건드리지 않아 표정↔걷기 깜빡임 없음)
-        bubbleEl.style.transform = '';
+        // 걷기가 아닌 모든 상태(rest/lie/doze/sitfix): 스프라이트는 이미 세팅됨
+        // pet-bounce 애니메이션 중이면 그 transform을 살려두고, 아니면 초기화
+        if (!bubbleEl.classList.contains('bl-pet-bounce')) bubbleEl.style.transform = '';
     }
     if (_shimeji.state !== 'landing') { bubbleEl.style.left = _shimeji.x + 'px'; bubbleEl.style.top = _shimeji.y + 'px'; bubbleEl.style.right = 'auto'; bubbleEl.style.bottom = 'auto'; }
     _shimeji.raf = requestAnimationFrame(shimejiTick);
@@ -3108,6 +3110,7 @@ if (typeof window !== 'undefined') {
             console.log('[비스트로그] 🎰 복권 해금됨! 알바 탭 열고 복권 긁어보세요 (3장)');
         },
         lottoDraw: () => { try { buyLotto(); } catch (e) { console.error(e); } },  // 복권 바로 추첨
+        shimejiDebug: (on) => { window.BL_SHIMEJI_DEBUG = (on !== false); console.log('[비스트로그] 시메지 디버그', window.BL_SHIMEJI_DEBUG ? 'ON — 스프라이트 교체 로그 출력' : 'OFF'); },
     };
 }
 if (typeof document !== 'undefined') {
