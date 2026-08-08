@@ -1,4 +1,4 @@
-// 🐯 비스트로그 (Beast Log) v0.56.0 — 상태 0~100%(😊기분·🍖배고픔·⚡체력). 표정: 눈물/자는표정/병아리·판다 전용. 밥: 60%까지 무료+유료메뉴 고정. 작명소(첫무료/변경5만). 펫이름 세로배치+진화명병기.
+// 🐯 비스트로그 (Beast Log) v0.57.0 — 상태 0~100%(😊기분·🍖배고픔·⚡체력). 표정: 눈물/자는표정/병아리·판다 전용. 밥: 60%까지 무료+유료메뉴 고정. 작명소(첫무료/변경5만). 펫이름 세로배치+진화명병기.
 // 경험치: 레벨곡선 60+lv²×15, 선택별 고정값(협력8/도움6/함께4/기웃2/시비-3), 상태별 효율(잘돌볼수록↑), backfire(18%). 알바: {{char}}가 직접(그룹/1카드 다역 대응).
 // 아이템: RP맥락 드랍(등장소품/로어북/맥락생성)+사연(lore)+떡밥(조우유도), 희귀도⚪🟢🔵🟣, bond(💝 {{char}}/{{user}} 연관 깊을수록 귀함). 도감(인물/생물/사물).
 // v0.49 추가: 캐릭터별 저장(새챗에도 데이터 유지), 턴=자체카운터(시뮬 자동출현 폭발 수정), 자동출현 조우/상황 반반 3~4턴, 목록 미리보기3개+전체보기, {{char}}/{{user}} 매크로 치환.
@@ -9,9 +9,10 @@
 // v0.54 추가: 눕기/졸기 랜덤화, 걷기 중 표정 표시(배고프면 울며 걷기), 눈물 뚝뚝 애니메이션, 정면앉기 꼬리 추가, 새로고침·재접속해도 시메지 유지(버블 모드 자동 복원).
 // v0.55 추가: 표정을 몸통 위에 얹도록 수정(머리만 뜨던 버그 패치), 정면앉기는 멍한 원본 표정 유지, 중력을 '놓은 자리서 일정 거리만 낙하 후 그 높이 유지'로 변경, 정면앉기 그림 갱신.
 // v0.56 추가: 걷는 중에도 표정 유지(웃음/무표정/울음), 시메지 컨테이너 리플로우 제거로 표정 전환 시 깜빡임(머리만 뜨던 현상) 해결, 걷다가 가끔 방긋.
+// v0.57 추가: 걷기+표정을 실시간 합성이 아닌 완성 스프라이트(사용자가 직접 그린 걷기1/2 × 웃음/무표정/울음 6종)로 교체 — 걷는 중 표정 전환 시 얼굴만 뜨던 깜빡임 근본 해결. 우는 걷기는 눈물 위치 다른 2프레임 애니.
 // 버전 3곳 동시 갱신: (1) 이 주석, (2) BEASTLOG_VERSION, (3) manifest.json
 
-const BEASTLOG_VERSION = '0.56.0';
+const BEASTLOG_VERSION = '0.57.0';
 const MODULE = 'beast_log';
 let LAST_ERROR = '';
 const DBG_LOG = [];
@@ -145,7 +146,7 @@ const SPR_CHICK2 = { w: 16, h: 15, pal: { X: '#ffed24', O: '#f6b94d' }, rows: ['
 const SPR_CHICK3 = { w: 16, h: 15, pal: { R: '#e2483a', C: '#fdf6e3', O: '#f6b94d' }, rows: ['.....RRRR.......','.....RRRRRR.....','..KKKKKKKKKKK...','.KCCCCCCCCCCCK..','.KCCCCCCCCCCCK..','.KCCKCCCCCKCCK..','KCCCCKCCCKCCCKK.','KCCCCCCOCCCCCCK.','KCCCCCCCCCCCCCK.','KCCCCCCCCCCCCCK.','KCCCCCCCCCCCCCK.','KCCCCCCCCCCCCCK.','.KCCCCCCCCCCCK..','..KKKKKKKKKKK...','................'] };  // 3단계: 닭 (사용자 그림, 빨강볏)
 // 🐯 호랑이 앉은 모습 (시메지 상호작용용, 사용자 그림 16×22)
 // 🐯 호랑이 시메지 스프라이트 세트 (사용자 그림) — 전부 '왼쪽 보는' 방향
-const TIGER_PAL = { O: '#f6b94d', C: '#fdf6e3', B: '#7a4f28', T: '#5a9fd6' };
+const TIGER_PAL = { O: '#f6b94d', C: '#fdf6e3', B: '#7a4f28', T: '#5a9fd6', H: '#5a9fd6' };
 const SPR_TG = {
     stand: { w: 29, h: 23, rows: ['.KKK.......KKK...............','KOCCK.....KOCCK..............','KOCCKKKKKKKOCCK..............','KOOOOOBOOOOOOOK..............','.KOOOBBBOOOOOK............KK.','.KOOOOBOOOOOOK...........KBK.','KOOOOBBBOOOOOOK..........KOK.','KBBOOOOOOOOOBBK.........KBOK.','KOOOKOOOKOOOOOK.........KOK..','KBBOKOOOKOOOBBK........KBOK..','KOOOOCKCOOOOOOK.......KBOK...','KOOOCCCCCOOOOOKKKKKKKKKOOK...','.KOOCCCCCOOOOKOBBOOBBOOOK....','..KKKKKKKKKKKOOBBBOBBBOOK....','...KOCCCCCCOOOOOBBOOBBOOK....','...KOCCCCCCCOOOOOBOOOBOOK....','...KOOCCCCCCOOOOOOOOOOOOK....','...KOOOOOOOOOOOCCCCOOOOOK....','...KOOOOKOOOOKCCCCCOOOOOK....','...KOOOOKOOOOKKKKKKOOOOOK....','...KOOOOKOOOOK..KOOKOOOOK....','...KCCCCKCCCCK..KCCKCCCOK....','....KKKK.KKKK....KK.KKKK.....'] },
     walk1: { w: 29, h: 23, rows: ['.KKK.......KKK...............','KOCCK.....KOCCK..............','KOCCKKKKKKKOCCK..............','KOOOOOBOOOOOOOK..............','.KOOOBBBOOOOOK............KK.','.KOOOOBOOOOOOK...........KBK.','KOOOOBBBOOOOOOK..........KOK.','KBBOOOOOOOOOBBK.........KBOK.','KOOOKOOOKOOOOOK.........KOK..','KBBOKOOOKOOOBBK........KBOK..','KOOOOCKCOOOOOOK.......KBOK...','KOOOCCCCCOOOOOKKKKKKKKKOOK...','.KOOCCCCCOOOOKOBBOOBBOOOK....','..KKKKKKKKKKKOOBBBOBBBOOK....','...KOCCCCCCOOOOOBBOOBBOOK....','...KOCCCCCCCOOOOOBOOOBOOK....','...KOOCCCCCCOOOOOOOOOOOOK....','..KKOOOOOOOOOOOCCCCCOOOOK....','..KOOOOOKOOOOKCCCCCCOOOOOK...','.KCOOOOOKOOOOKKKKKKKKOOOOOK..','.KCCCOOKKOOOOK..KOOOKKOOOCK..','..KKKKK.KCCCCK..KCCCK.KKCCK..','.........KKKK....KKK...KKK...'] },
@@ -154,6 +155,12 @@ const SPR_TG = {
     lie:   { w: 38, h: 16, rows: ['................KKK......KKK..........','.KKK..KKKKKK...KOCCK....KCCCK.........','KCCOKKOBOBOOK..KOCCK....KCCCK.........','KCCOOOOBOBOOOKKOOCK....KKOOOK.........','KOOOOOOOOOOOOKKOOOKKKKKKOOOOK.........','.KKOOOOOOOOOOKOOCCCCCCCOOOOKK.........','..KOOOOOOOOOOKOCKKKKCCCCOOKKKK...KKK..','..KOOOOOKKOCCKCKCCCKCCCCCKCCCK...KBBK.','..KOBOBOOOCCCKCKOOCKCCCCCKCCCK...KBBK.','..KBBBBOOOKCCKCKOOKCCCCKKKOOOK....KOOK','..KOBOBOOOCCCKOKOOKOOOOKOOOOOK....KOOK','.KKOOOOOKKOCCKOKOOKOOOOOOOOOOK...KBBBK','KCCOOOOOOOOOOKOOOOOBBOOOBBOOKKKKKOOBK.','KCCOOOOBOBOOOKOOOBBBOOBBBOOOKBBOBBOOK.','KOOOKKOBOBOOKOOOOBBOOOBBOOOKOOBOOBKK..','.KKK..KKKKKKKKKKKKKKKKKKKKKKKKKKKK....'] },
     frontsit: { w: 23, h: 25, rows: ['...KKK.......KKK.......','..KOCCK.....KOCCK......','..KOCCKKKKKKKOCCK......','..KOOOOOOBOOOOOOK......','...KOOOOBBBOOOOK.......','...KOOOOOBOOOOOK.......','..KOOOOOBBBOOOOOK......','..KBBOOOOOOOOOBBK......','..KOOOOKOOOKOOOOK......','..KBBOOKOOOKOOBBK......','..KOOOOOCKCOOOOOK......','..KOOOOCCCCCOOOOK......','...KOOOCCCCCOOOK.......','....KKKKKKKKKKK........','....KOOOCCCOOOK......KK','....KOOCCCCCOOK.....KBK','...KBBOCCCCCOBBK...KBOK','...KOBOCCCCCOBOK...KOK.','...KOOOOCCCOOOOK..KBOK.','..KBBOOOOOOOOOBBKKBOK..','..KOKOOOOKOOOOKOKOOK...','KKKOKOOOOKOOOOKOKKKK...','KCOOKCCCCKCCCCKOOCK....','KCCOKCCCCKCCCCKOCCK....','.KKKKKKKK.KKKKKKKK.....'] },
     hang:  { w: 17, h: 38, rows: ['.KKK.......KKK...','KOCCK.....KOCCK..','KOCCKKKKKKKOCCK..','KOOOOOBOOOOOOOK..','.KOOOBBBOOOOOK...','.KOOOOBOOOOOOK...','KOOOOBBBOOOOOOK..','KBBOOOOOOOOOBBKK.','KOOOKOOOKOOOOOKOK','KBBOKOOOKOOOBBKOK','KOOOOCKCOOOOOOKBK','KOOOCCCCCOOOOOKBK','.KOOCCCCCOOOOKOOK','..KKKKKKKKKKKOOOK','...KOOOOOOOOOOBOK','..KKOOKOCKOOOKBBK','..KOOOKCCKOOOKOOK','..KOOOKCCKOOOKOOK','..KCCCKCCKCCCKBOK','..KCCCKCCKCCCKBBK','...KKKOCCCKKKOBBK','....KOOCCCCCCOOOK','....KOOCCCCCCOOOK','....KOOOCCCCOOOOK','....KOOOOOOOOOOOK','....KOOOOKKKOOOOK','....KOOOK.KKKOOOK','....KOOOK.KOKOOOK','....KOOOK.KBKCCCK','....KCCCK.KBKCCCK','....KCCCK.KOKCCCK','.....KKK..KOOKKK.','..........KBOK...','..........KBBK...','..........KOOK...','..........KBBK...','..........KBBK...','...........KK....'] },
+    walk1_happy: { w: 28, h: 23, rows: ['.KKK.......KKK..............','KOCCK.....KOCCK.............','KOCCKKKKKKKOCCK.............','KOOOOOBOOOOOOOK.............','.KOOOBBBOOOOOK............KK','.KOOOOBOOOOOOK...........KBK','KOOOOBBBOOOOOOK..........KOK','KBBOOOOOOOOOBBK.........KBOK','KOOOKOOOKOOOOOK.........KOK.','KBBKOKOKOKOOBBK........KBOK.','KOOOOCKCOOOOOOK.......KBOK..','KOOOCCCCCOOOOOKKKKKKKKKOOK..','.KOOCCCCCOOOOKOBBOOBBOOOK...','..KKKKKKKKKKKOOBBBOBBBOOK...','...KOCCCCCCOOOOOBBOOBBOOK...','...KOCCCCCCCOOOOOBOOOBOOK...','...KOOCCCCCCOOOOOOOOOOOOK...','..KKOOOOOOOOOOOCCCCCOOOOK...','..KOOOOOKOOOOKCCCCCCOOOOOK..','.KCOOOOOKOOOOKKKKKKKKOOOOOK.','.KCCCOOKKOOOOK..KOOOKKOOOCK.','..KKKKK.KCCCCK..KCCCK.KKCCK.','.........KKKK....KKK...KKK..'] },
+    walk2_happy: { w: 29, h: 23, rows: ['.KKK.......KKK...............','KOCCK.....KOCCK..............','KOCCKKKKKKKOCCK..............','KOOOOOBOOOOOOOK..............','.KOOOBBBOOOOOK...............','.KOOOOBOOOOOOK.............KK','KOOOOBBBOOOOOOK...........KBK','KBBOOOOOOOOOBBK...........KBK','KOOOKOOOKOOOOOK..........KBOK','KBBKOKOKOKOOBBK..........KBK.','KOOOOCKCOOOOOOK........KKBOK.','KOOOCCCCCOOOOOKKKKKKKKKKOOK..','.KOOCCCCCOOOOKOBBOOBBOOOOK...','..KKKKKKKKKKKOOBBBOBBBOOK....','...KOCCCCCCOOOOOBBOOBBOOK....','...KOCCCCKCCOOOOOBOOOBOOK....','...KOOCCCKCCOOOOOOOOOOOOK....','...KOOOKKOOOOOOCCCCCOOOOK....','...KOOKOOOOOOKCCCCCCOOOOK....','...KOOKCOOOOOKKKKKKKOOOOK....','...KCCKCCOOOOK.KCCOKCCCCK....','...KCCCKKKKKK...KKKKCCCCK....','....KKKK............KKKK.....'] },
+    walk1_neutral: { w: 28, h: 23, rows: ['.KKK.......KKK..............','KOCCK.....KOCCK.............','KOCCKKKKKKKOCCK.............','KOOOOOBOOOOOOOK.............','.KOOOBBBOOOOOK............KK','.KOOOOBOOOOOOK...........KBK','KOOOOBBBOOOOOOK..........KOK','KBBOOOOOOOOOBBK.........KBOK','KOOOOOOOOOOOOOK.........KOK.','KBBKKKOKKKOOBBK........KBOK.','KOOOOCKCOOOOOOK.......KBOK..','KOOOCCCCCOOOOOKKKKKKKKKOOK..','.KOOCCCCCOOOOKOBBOOBBOOOK...','..KKKKKKKKKKKOOBBBOBBBOOK...','...KOCCCCCCOOOOOBBOOBBOOK...','...KOCCCCCCCOOOOOBOOOBOOK...','...KOOCCCCCCOOOOOOOOOOOOK...','..KKOOOOOOOOOOOCCCCCOOOOK...','..KOOOOOKOOOOKCCCCCCOOOOOK..','.KCOOOOOKOOOOKKKKKKKKOOOOOK.','.KCCCOOKKOOOOK..KOOOKKOOOCK.','..KKKKK.KCCCCK..KCCCK.KKCCK.','.........KKKK....KKK...KKK..'] },
+    walk2_neutral: { w: 29, h: 23, rows: ['.KKK.......KKK...............','KOCCK.....KOCCK..............','KOCCKKKKKKKOCCK..............','KOOOOOBOOOOOOOK..............','.KOOOBBBOOOOOK...............','.KOOOOBOOOOOOK.............KK','KOOOOBBBOOOOOOK...........KBK','KBBOOOOOOOOOBBK...........KBK','KOOOOOOOOOOOOOK..........KBOK','KBBKKKOKKKOOBBK..........KBK.','KOOOOCKCOOOOOOK........KKBOK.','KOOOCCCCCOOOOOKKKKKKKKKKOOK..','.KOOCCCCCOOOOKOBBOOBBOOOOK...','..KKKKKKKKKKKOOBBBOBBBOOK....','...KOCCCCCCOOOOOBBOOBBOOK....','...KOCCCCKCCOOOOOBOOOBOOK....','...KOOCCCKCCOOOOOOOOOOOOK....','...KOOOKKOOOOOOCCCCCOOOOK....','...KOOKOOOOOOKCCCCCCOOOOK....','...KOOKCOOOOOKKKKKKKOOOOK....','...KCCKCCOOOOK.KCCOKCCCCK....','...KCCCKKKKKK...KKKKCCCCK....','....KKKK............KKKK.....'] },
+    walk1_cry: { w: 28, h: 23, rows: ['.KKK.......KKK..............','KOCCK.....KOCCK.............','KOCCKKKKKKKOCCK.............','KOOOOOBOOOOOOOK.............','.KOOOBBBOOOOOK............KK','.KOOOOBOOOOOOK...........KBK','KOOOOBBBOOOOOOK..........KOK','KBBOOOOOOOOOBBK.........KBOK','KOOOKOOOKOOOOOK.........KOK.','KBBOHOOOOOOOBBK........KBOK.','KOOOHCKCHOOOOOK.......KBOK..','KOOOCCCCHOOOOOKKKKKKKKKOOK..','.KOOCCCCCOOOOKOBBOOBBOOOK...','..KKKKKKKKKKKOOBBBOBBBOOK...','...KOCCCCCCOOOOOBBOOBBOOK...','...KOCCCCCCCOOOOOBOOOBOOK...','...KOOCCCCCCOOOOOOOOOOOOK...','..KKOOOOOOOOOOOCCCCCOOOOK...','..KOOOOOKOOOOKCCCCCCOOOOOK..','.KCOOOOOKOOOOKKKKKKKKOOOOOK.','.KCCCOOKKOOOOK..KOOOKKOOOCK.','..KKKKK.KCCCCK..KCCCK.KKCCK.','.........KKKK....KKK...KKK..'] },
+    walk2_cry: { w: 29, h: 23, rows: ['.KKK.......KKK...............','KOCCK.....KOCCK..............','KOCCKKKKKKKOCCK..............','KOOOOOBOOOOOOOK..............','.KOOOBBBOOOOOK...............','.KOOOOBOOOOOOK.............KK','KOOOOBBBOOOOOOK...........KBK','KBBOOOOOOOOOBBK...........KBK','KOOOKOOOKOOOOOK..........KBOK','KBBOKOOOKOOOBBK..........KBK.','KOOOOCKCOOOOOOK........KKBOK.','KOOOHCCCCOOOOOKKKKKKKKKKOOK..','.KOOHCCCHOOOOKOBBOOBBOOOOK...','..KKKKKKHKKKKOOBBBOBBBOOK....','...KOCCCCCCOOOOOBBOOBBOOK....','...KOCCCCKCCOOOOOBOOOBOOK....','...KOOCCCKCCOOOOOOOOOOOOK....','...KOOOKKOOOOOOCCCCCOOOOK....','...KOOKOOOOOOKCCCCCCOOOOK....','...KOOKCOOOOOKKKKKKKOOOOK....','...KCCKCCOOOOK.KCCOKCCCCK....','...KCCCKKKKKK...KKKKCCCCK....','....KKKK............KKKK.....'] },
 };
 // 얼굴 표정 (16x14) — 시메지 표정 표시용
 const SPR_TG_FACE = {
@@ -2525,18 +2532,34 @@ function shimejiSetSprite(state, expr) {
     _shimeji.expr = expr || null;   // 현재 표정 기억 (걷기 프레임 교체 때도 유지됨)
     const isTiger = EXT.mascot === 'tiger';
     if (isTiger) {
-        const body = SPR_TG[state] ? state : 'stand';   // 실제 포즈(몸통)
-        if (expr && SPR_TG_FACE[expr] && tgFaceCompatible(body)) {
-            bubbleEl.innerHTML = tgSVGExpr(body, expr, TG_SIZE[body] || 46);   // 몸통 + 표정
-            if (window.BL_SHIMEJI_DEBUG) console.log('[시메지] 몸통+표정:', body, expr, '높이', SPR_TG[body].h);
+        // 걷기(walk1/walk2)는 표정 포함 완성 스프라이트 사용 (실시간 합성 X)
+        if (state === 'walk1' || state === 'walk2') {
+            const frame = state === 'walk2' ? 2 : 1;
+            const key = shimejiWalkKey(frame, expr);
+            bubbleEl.innerHTML = tgSVG(key, TG_SIZE.walk1);
+            if (window.BL_SHIMEJI_DEBUG) console.log('[시메지] 걷기완성:', key);
         } else {
-            bubbleEl.innerHTML = tgSVG(body, TG_SIZE[body] || 46);            // 몸통만
-            if (window.BL_SHIMEJI_DEBUG) console.log('[시메지] 몸통만:', body);
+            const body = SPR_TG[state] ? state : 'stand';   // 실제 포즈(몸통)
+            if (expr && SPR_TG_FACE[expr] && tgFaceCompatible(body)) {
+                bubbleEl.innerHTML = tgSVGExpr(body, expr, TG_SIZE[body] || 46);   // 앉기 등: 몸통 + 표정 합성
+                if (window.BL_SHIMEJI_DEBUG) console.log('[시메지] 몸통+표정:', body, expr);
+            } else {
+                bubbleEl.innerHTML = tgSVG(body, TG_SIZE[body] || 46);            // 몸통만
+                if (window.BL_SHIMEJI_DEBUG) console.log('[시메지] 몸통만:', body);
+            }
         }
     } else {
         bubbleEl.innerHTML = mascotSVG(34, expr);   // 다른 마스코트는 얼굴만
     }
     // 컨테이너(56x56, align-items:flex-end)가 발바닥을 바닥에 고정하므로 top 재계산 불필요
+}
+// 걷기 프레임+표정 → 완성 스프라이트 키. 표정 없으면 기본 walk 몸통
+function shimejiWalkKey(frame, expr) {
+    const base = 'walk' + frame;
+    if (expr === 'happy' && SPR_TG[base + '_happy']) return base + '_happy';
+    if (expr === 'neutral' && SPR_TG[base + '_neutral']) return base + '_neutral';
+    if (expr === 'cry' && SPR_TG[base + '_cry']) return base + '_cry';
+    return base;   // 기본 걷기
 }
 // 정면 얼굴(눈 y8~10, x0~14)과 눈 위치가 같아 표정을 얹을 수 있는 포즈들
 // (frontsit은 제외 — 착지 시 멍한 원본 표정 그대로 두는 게 귀여움)
@@ -2591,15 +2614,14 @@ function shimejiTick(now) {
         // 벽 만나면 반대로
         if (_shimeji.x <= 2) { _shimeji.x = 2; _shimeji.dir = 1; }
         if (_shimeji.x >= window.innerWidth - sz - 2) { _shimeji.x = window.innerWidth - sz - 2; _shimeji.dir = -1; }
-        // 걷기 프레임 교차 (walk1 ↔ walk2) — 현재 표정(_shimeji.expr) 유지하며
+        // 걷기 프레임 교차 (walk1 ↔ walk2) — 표정별 완성 스프라이트 선택 (실시간 합성 X)
         if (EXT.mascot === 'tiger' && now - _shimeji.frameT >= SHIMEJI_FRAME_MS) {
             _shimeji.frameT = now;
             _shimeji.frame = _shimeji.frame === 1 ? 2 : 1;
             const hungry = (STATE.hunger != null && STATE.hunger < 30);
-            // 배고프면 울상, 아니면 현재 지정된 표정(_shimeji.expr), 그것도 없으면 기본
-            const expr = hungry ? 'cry' : (_shimeji.expr || null);
-            bubbleEl.innerHTML = (expr && SPR_TG_FACE[expr]) ? tgSVGExpr('walk' + _shimeji.frame, expr, TG_SIZE.walk1)
-                                      : tgSVG('walk' + _shimeji.frame, TG_SIZE.walk1);
+            const expr = hungry ? 'cry' : (_shimeji.expr || null);   // 배고프면 울상 우선
+            const key = shimejiWalkKey(_shimeji.frame, expr);   // 예: walk1_happy, walk2_cry, walk1
+            bubbleEl.innerHTML = tgSVG(key, TG_SIZE.walk1);
             if (hungry) startCrying(); else stopCrying();
         }
         // 그림은 '왼쪽 보는' 방향 → 오른쪽(dir=1) 이동 시 좌우반전
