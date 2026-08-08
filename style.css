@@ -444,7 +444,7 @@
 @keyframes bl-pet-bounce { 0% { transform: scale(1); } 25% { transform: scale(1.18) translateY(-3px); } 45% { transform: scale(.95) translateY(0); } 65% { transform: scale(1.08) translateY(-1px); } 100% { transform: scale(1); } }
 
 /* ── 시메지 모드: 버블 배경 제거(캐릭터만) ── */
-#beastlog-bubble.bl-shimeji { background: none; border: none; box-shadow: none; border-radius: 0; width: auto; height: auto; animation: none; padding: 0; display: block; overflow: visible; }
+#beastlog-bubble.bl-shimeji { background: none; border: none; box-shadow: none; border-radius: 0; width: 56px; height: 56px; animation: none; padding: 0; display: flex; align-items: flex-end; justify-content: center; overflow: visible; }
 #beastlog-bubble.bl-shimeji svg { display: block; }
 #beastlog-bubble.bl-shimeji:active { transform: none; }
 /* ── 쓰다듬기 하트 이펙트 ── */
