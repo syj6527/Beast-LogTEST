@@ -1,4 +1,4 @@
-// 🐯 비스트로그 (Beast Log) v0.55.0 — 상태 0~100%(😊기분·🍖배고픔·⚡체력). 표정: 눈물/자는표정/병아리·판다 전용. 밥: 60%까지 무료+유료메뉴 고정. 작명소(첫무료/변경5만). 펫이름 세로배치+진화명병기.
+// 🐯 비스트로그 (Beast Log) v0.55.1 — 상태 0~100%(😊기분·🍖배고픔·⚡체력). 표정: 눈물/자는표정/병아리·판다 전용. 밥: 60%까지 무료+유료메뉴 고정. 작명소(첫무료/변경5만). 펫이름 세로배치+진화명병기.
 // 경험치: 레벨곡선 60+lv²×15, 선택별 고정값(협력8/도움6/함께4/기웃2/시비-3), 상태별 효율(잘돌볼수록↑), backfire(18%). 알바: {{char}}가 직접(그룹/1카드 다역 대응).
 // 아이템: RP맥락 드랍(등장소품/로어북/맥락생성)+사연(lore)+떡밥(조우유도), 희귀도⚪🟢🔵🟣, bond(💝 {{char}}/{{user}} 연관 깊을수록 귀함). 도감(인물/생물/사물).
 // v0.49 추가: 캐릭터별 저장(새챗에도 데이터 유지), 턴=자체카운터(시뮬 자동출현 폭발 수정), 자동출현 조우/상황 반반 3~4턴, 목록 미리보기3개+전체보기, {{char}}/{{user}} 매크로 치환.
@@ -10,7 +10,7 @@
 // v0.55 추가: 표정을 몸통 위에 얹도록 수정(머리만 뜨던 버그 패치), 정면앉기는 멍한 원본 표정 유지, 중력을 '놓은 자리서 일정 거리만 낙하 후 그 높이 유지'로 변경, 정면앉기 그림 갱신.
 // 버전 3곳 동시 갱신: (1) 이 주석, (2) BEASTLOG_VERSION, (3) manifest.json
 
-const BEASTLOG_VERSION = '0.55.0';
+const BEASTLOG_VERSION = '0.55.1';
 const MODULE = 'beast_log';
 let LAST_ERROR = '';
 const DBG_LOG = [];
@@ -2345,18 +2345,21 @@ function enterSitMode() {
     bubbleEl.style.transform = `scaleX(${_shimeji.dir})`;
 }
 function exitSitMode() {
-    // 아이콘 닫힌 뒤 1초 정도 앉은 자세 유지하다가 얼굴 복귀
+    // 아이콘 닫힌 뒤 1초 정도 앉은 자세 유지하다가 걷기 복귀
     if (_sitExitTO) clearTimeout(_sitExitTO);
     _sitExitTO = setTimeout(() => {
         _sitExitTO = null;
         if (!bubbleEl || bubbleActionsEl) return;   // 그 사이 다시 탭했으면 유지
-        shimejiSwapSprite(mascotSVG(34));
         if (EXT.shimeji && _shimeji.on) {
             _shimeji.state = 'walk';
+            _shimeji.frame = 1; _shimeji.frameT = performance.now();
             _shimeji.until = performance.now() + 2000 + Math.random() * 2000;
             _shimeji.lastT = performance.now();
             const r = bubbleEl.getBoundingClientRect();
             _shimeji.x = r.left;
+            shimejiSetSprite(EXT.mascot === 'tiger' ? 'walk1' : 'walk');   // 걷기 몸통 (얼굴 X)
+        } else {
+            shimejiSwapSprite(mascotSVG(34));
         }
     }, 1000);
 }
@@ -2519,7 +2522,10 @@ const TG_SIZE = { stand: 46, walk1: 46, walk2: 46, sit: 44, lie: 54, hang: 26, f
 function shimejiSetSprite(state, expr) {
     if (!bubbleEl) return;
     const isTiger = EXT.mascot === 'tiger';
-    const prevBottom = bubbleEl.getBoundingClientRect().bottom;
+    // 발바닥 기준 정렬을 위해 현재 하단 좌표를 transform 영향 없이 계산
+    const curTop = parseFloat(bubbleEl.style.top) || bubbleEl.getBoundingClientRect().top;
+    const curH = bubbleEl.offsetHeight || 34;
+    const prevBottom = curTop + curH;
     if (isTiger) {
         const body = SPR_TG[state] ? state : 'stand';   // 실제 포즈(몸통)
         if (expr && SPR_TG_FACE[expr] && tgFaceCompatible(body)) {

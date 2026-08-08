@@ -440,11 +440,12 @@
 .bl-ba-btn { width: 38px; height: 38px; border-radius: 50%; border: 2px solid var(--bl-edge, #b5863c); background: var(--bl-card, #fcf4dd); font-size: 18px; line-height: 1; cursor: pointer; box-shadow: 1px 2px 0 var(--bl-shadow, #d9b878); display: flex; align-items: center; justify-content: center; padding: 0; }
 .bl-ba-btn:active { transform: translateY(1px); box-shadow: none; }
 /* ── 시메지: 쓰다듬기 반응 바운스 ── */
-.bl-pet-bounce { animation: bl-pet-bounce .9s ease; }
+.bl-pet-bounce { animation: bl-pet-bounce .9s ease; transform-origin: 50% 100%; }
 @keyframes bl-pet-bounce { 0% { transform: scale(1); } 25% { transform: scale(1.18) translateY(-3px); } 45% { transform: scale(.95) translateY(0); } 65% { transform: scale(1.08) translateY(-1px); } 100% { transform: scale(1); } }
 
 /* ── 시메지 모드: 버블 배경 제거(캐릭터만) ── */
-#beastlog-bubble.bl-shimeji { background: none; border: none; box-shadow: none; border-radius: 0; width: auto; height: auto; animation: none; padding: 0; }
+#beastlog-bubble.bl-shimeji { background: none; border: none; box-shadow: none; border-radius: 0; width: auto; height: auto; animation: none; padding: 0; display: block; overflow: visible; }
+#beastlog-bubble.bl-shimeji svg { display: block; }
 #beastlog-bubble.bl-shimeji:active { transform: none; }
 /* ── 쓰다듬기 하트 이펙트 ── */
 .bl-heart-fx { position: fixed; z-index: 2147483002; font-size: 16px; pointer-events: none; animation: bl-heart-up 1s ease-out forwards; }
