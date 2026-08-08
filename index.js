@@ -1,4 +1,4 @@
-// 🐯 비스트로그 (Beast Log) v0.53.0 — 상태 0~100%(😊기분·🍖배고픔·⚡체력). 표정: 눈물/자는표정/병아리·판다 전용. 밥: 60%까지 무료+유료메뉴 고정. 작명소(첫무료/변경5만). 펫이름 세로배치+진화명병기.
+// 🐯 비스트로그 (Beast Log) v0.55.0 — 상태 0~100%(😊기분·🍖배고픔·⚡체력). 표정: 눈물/자는표정/병아리·판다 전용. 밥: 60%까지 무료+유료메뉴 고정. 작명소(첫무료/변경5만). 펫이름 세로배치+진화명병기.
 // 경험치: 레벨곡선 60+lv²×15, 선택별 고정값(협력8/도움6/함께4/기웃2/시비-3), 상태별 효율(잘돌볼수록↑), backfire(18%). 알바: {{char}}가 직접(그룹/1카드 다역 대응).
 // 아이템: RP맥락 드랍(등장소품/로어북/맥락생성)+사연(lore)+떡밥(조우유도), 희귀도⚪🟢🔵🟣, bond(💝 {{char}}/{{user}} 연관 깊을수록 귀함). 도감(인물/생물/사물).
 // v0.49 추가: 캐릭터별 저장(새챗에도 데이터 유지), 턴=자체카운터(시뮬 자동출현 폭발 수정), 자동출현 조우/상황 반반 3~4턴, 목록 미리보기3개+전체보기, {{char}}/{{user}} 매크로 치환.
@@ -6,9 +6,11 @@
 // v0.51 추가: 🚶 시메지 모드(세팅 토글) — 배경 없이 캐릭터만 바닥 어슬렁+가끔 행동, 탭→✋🍖📖 아이콘+호랑이 앉기(1초 여유 복귀), ✋쓰다듬기 기분+4/💗하트/바운스, 잡아 놓으면 그 자리 고정(그 높이서 좌우 이동), 복권 해금 5만원 이하로 완화.
 // v0.52 추가: 시메지 호랑이 옆모습 걷기(네발 콩콩·진행방향 반전) + 앉기 전환, 잡아 들면 두 발 정면으로 대롱대롱 좌우 흔들, 놓으면 착지 바운스.
 // v0.53 추가: 시메지 호랑이 새 스프라이트 6종(서있기/걷기1·2/앉기/눕기/목잡힘) + 표정 3종(웃음/무표정/울기), 걷기 프레임 교차 애니, 랜덤 앉기·눕기, 방치 시 졸기, 배고프면 울상, 쓰다듬/밥 주면 웃음, 들어올리면 목덜미 잡힌 자세, 놓으면 중력 낙하+착지 바운스.
+// v0.54 추가: 눕기/졸기 랜덤화, 걷기 중 표정 표시(배고프면 울며 걷기), 눈물 뚝뚝 애니메이션, 정면앉기 꼬리 추가, 새로고침·재접속해도 시메지 유지(버블 모드 자동 복원).
+// v0.55 추가: 표정을 몸통 위에 얹도록 수정(머리만 뜨던 버그 패치), 정면앉기는 멍한 원본 표정 유지, 중력을 '놓은 자리서 일정 거리만 낙하 후 그 높이 유지'로 변경, 정면앉기 그림 갱신.
 // 버전 3곳 동시 갱신: (1) 이 주석, (2) BEASTLOG_VERSION, (3) manifest.json
 
-const BEASTLOG_VERSION = '0.53.0';
+const BEASTLOG_VERSION = '0.55.0';
 const MODULE = 'beast_log';
 let LAST_ERROR = '';
 const DBG_LOG = [];
@@ -149,7 +151,7 @@ const SPR_TG = {
     walk2: { w: 29, h: 23, rows: ['.KKK.......KKK...............','KOCCK.....KOCCK..............','KOCCKKKKKKKOCCK..............','KOOOOOBOOOOOOOK..............','.KOOOBBBOOOOOK...............','.KOOOOBOOOOOOK.............KK','KOOOOBBBOOOOOOK...........KBK','KBBOOOOOOOOOBBK...........KOK','KOOOKOOOKOOOOOK..........KBOK','KBBOKOOOKOOOBBK..........KOK.','KOOOOCKCOOOOOOK........KKBOK.','KOOOCCCCCOOOOOKKKKKKKKKKBOK..','.KOOCCCCCOOOOKOBBOOBBOOOOK...','..KKKKKKKKKKKOOBBBOBBBOOK....','...KOCCCCCCOOOOOBBOOBBOOK....','...KOCCCCKCCOOOOOBOOOBOOK....','...KOOCCCKCCOOOOOOOOOOOOK....','...KOOOKKOOOOOOCCCCCOOOOK....','...KOOKOOOOOOKCCCCCCOOOOK....','...KOOKCOOOOOKKKKKKKOOOOK....','...KCCKCCOOOOK.KCCOKCCCCK....','...KCCCKKKKKK...KKKKCCCCK....','....KKKK............KKKK.....'] },
     sit:   { w: 28, h: 23, rows: ['.KKK.......KKK..............','KOCCK.....KOCCK.............','KOCCKKKKKKKOCCK.............','KOOOOOBOOOOOOOK.............','.KOOOBBBOOOOOK..............','.KOOOOBOOOOOOK..............','KOOOOBBBOOOOOOK.............','KBBOOOOOOOOOBBK.............','KOOOKOOOKOOOOOK.............','KBBOKOOOKOOOBBK.............','KOOOOCKCOOOOOOK.............','KOOOCCCCCOOOOOK.............','.KOOCCCCCOOOOKOKK...........','..KKKKKKKKKKKOOBBKK......KKK','...KOCCCCCCOOOOOBOBK....KBBK','...KOCCCCCCCOOOOOOBKK...KBOK','...KOOCCCCCCOOOOOOOBK..KKOKK','...KOOOOOOOOOKOOKKOOK..KBOK.','...KOOOOKOOOOKCKOOOOKKKKBOK.','...KOOOOKOOOOKKKOOOOKOBBOOK.','...KOOOOKOOOOKCOOOOOKOOOKK..','...KCCCCKCCCCKCCOOOOKKKKK...','....KKKK.KKKKKKKKKKK........'] },
     lie:   { w: 38, h: 16, rows: ['................KKK......KKK..........','.KKK..KKKKKK...KOCCK....KCCCK.........','KCCOKKOBOBOOK..KOCCK....KCCCK.........','KCCOOOOBOBOOOKKOOCK....KKOOOK.........','KOOOOOOOOOOOOKKOOOKKKKKKOOOOK.........','.KKOOOOOOOOOOKOOCCCCCCCOOOOKK.........','..KOOOOOOOOOOKOCKKKKCCCCOOKKKK...KKK..','..KOOOOOKKOCCKCKCCCKCCCCCKCCCK...KBBK.','..KOBOBOOOCCCKCKOOCKCCCCCKCCCK...KBBK.','..KBBBBOOOKCCKCKOOKCCCCKKKOOOK....KOOK','..KOBOBOOOCCCKOKOOKOOOOKOOOOOK....KOOK','.KKOOOOOKKOCCKOKOOKOOOOOOOOOOK...KBBBK','KCCOOOOOOOOOOKOOOOOBBOOOBBOOKKKKKOOBK.','KCCOOOOBOBOOOKOOOBBBOOBBBOOOKBBOBBOOK.','KOOOKKOBOBOOKOOOOBBOOOBBOOOKOOBOOBKK..','.KKK..KKKKKKKKKKKKKKKKKKKKKKKKKKKK....'] },
-    frontsit: { w: 25, h: 25, rows: ['...KKK.......KKK.........','..KOCCK.....KOCCK........','..KOCCKKKKKKKOCCK........','..KOOOOOOBOOOOOOK........','...KOOOOBBBOOOOK.........','...KOOOOOBOOOOOK.........','..KOOOOOBBBOOOOOK........','..KBBOOOOOOOOOBBK........','..KOOOOKOOOKOOOOK........','..KBBOOKOOOKOOBBK........','..KOOOOOCKCOOOOOK........','..KOOOOCCCCCOOOOK........','...KOOOCCCCCOOOK.......KK','..KKKKKKKKKKKKKKK.....KBK','..KOOOOOCCCOOOOOK.....KOK','.KBBBOOCCCCCOOBBBK...KBOK','.KBBOOOCCCCCOOOBBK...KOOK','.KOOOOOCCCCCOOOOOK..KBOK.','.KBBBOOOCCCOOOBBBK..KBOK.','.KBBOOOOOOOOOOOBBKKKBOK..','.KOOOOOOOKOOOOOOOKOOOOK..','KOOOKOOOOKOOOOKOOOOOKK...','KCOOKOCCCKCCCOKOOCKK.....','KCCOKOCCCKCCCOKOCCK......','.KKKKKKKK.KKKKKKKK.......'] },
+    frontsit: { w: 23, h: 25, rows: ['...KKK.......KKK.......','..KOCCK.....KOCCK......','..KOCCKKKKKKKOCCK......','..KOOOOOOBOOOOOOK......','...KOOOOBBBOOOOK.......','...KOOOOOBOOOOOK.......','..KOOOOOBBBOOOOOK......','..KBBOOOOOOOOOBBK......','..KOOOOKOOOKOOOOK......','..KBBOOKOOOKOOBBK......','..KOOOOOCKCOOOOOK......','..KOOOOCCCCCOOOOK......','...KOOOCCCCCOOOK.......','....KKKKKKKKKKK........','....KOOOCCCOOOK......KK','....KOOCCCCCOOK.....KBK','...KBBOCCCCCOBBK...KBOK','...KOBOCCCCCOBOK...KOK.','...KOOOOCCCOOOOK..KBOK.','..KBBOOOOOOOOOBBKKBOK..','..KOKOOOOKOOOOKOKOOK...','KKKOKOOOOKOOOOKOKKKK...','KCOOKCCCCKCCCCKOOCK....','KCCOKCCCCKCCCCKOCCK....','.KKKKKKKK.KKKKKKKK.....'] },
     hang:  { w: 17, h: 38, rows: ['.KKK.......KKK...','KOCCK.....KOCCK..','KOCCKKKKKKKOCCK..','KOOOOOBOOOOOOOK..','.KOOOBBBOOOOOK...','.KOOOOBOOOOOOK...','KOOOOBBBOOOOOOK..','KBBOOOOOOOOOBBKK.','KOOOKOOOKOOOOOKOK','KBBOKOOOKOOOBBKOK','KOOOOCKCOOOOOOKBK','KOOOCCCCCOOOOOKBK','.KOOCCCCCOOOOKOOK','..KKKKKKKKKKKOOOK','...KOOOOOOOOOOBOK','..KKOOKOCKOOOKBBK','..KOOOKCCKOOOKOOK','..KOOOKCCKOOOKOOK','..KCCCKCCKCCCKBOK','..KCCCKCCKCCCKBBK','...KKKOCCCKKKOBBK','....KOOCCCCCCOOOK','....KOOCCCCCCOOOK','....KOOOCCCCOOOOK','....KOOOOOOOOOOOK','....KOOOOKKKOOOOK','....KOOOK.KKKOOOK','....KOOOK.KOKOOOK','....KOOOK.KBKCCCK','....KCCCK.KBKCCCK','....KCCCK.KOKCCCK','.....KKK..KOOKKK.','..........KBOK...','..........KBBK...','..........KOOK...','..........KBBK...','..........KBBK...','...........KK....'] },
 };
 // 얼굴 표정 (16x14) — 시메지 표정 표시용
@@ -159,18 +161,26 @@ const SPR_TG_FACE = {
     cry:     { w: 16, h: 14, rows: ['.KKK.......KKK..','KOCCK.....KOCCK.','KOCCKKKKKKKOCCK.','KOOOOOBOOOOOOOK.','.KOOOBBBOOOOOK..','.KOOOOBOOOOOOK..','KOOOOBBBOOOOOOK.','KBBOOOOOOOOOBBK.','KOOOKOOOKOOOOOK.','KBBOTOOOOOOOBBK.','KOOOTCKCTOOOOOK.','KOOOCCCCTOOOOOK.','.KOOCCCCCOOOOK..','..KKKKKKKKKKK...'] },
 };
 // 걷기/서있기 몸통에 표정 얹기 (눈줄 y8~9, 코줄 y10만 얼굴표정에서 가져옴)
+// 포즈별 얼굴 오프셋 (정면얼굴 대비 x/y 밀림). 눈줄이 맞아야 표정이 자연스러움
+const TG_FACE_OFFSET = { stand: { x: 0, y: 0 }, walk1: { x: 0, y: 0 }, walk2: { x: 0, y: 0 }, sit: { x: 0, y: 0 }, frontsit: { x: 2, y: 0 } };
 function tgSVGExpr(bodyKey, expr, width) {
     const s = SPR_TG[bodyKey];
     const f = SPR_TG_FACE[expr];
     if (!s) return tgSVG(bodyKey, width);
-    // 몸통 rows 복사 후, 앞쪽 얼굴 눈/코 라인 교체 (좌표 동일: y8,y9,y10 / x0~14)
     const rows = s.rows.slice();
+    const off = TG_FACE_OFFSET[bodyKey] || { x: 0, y: 0 };
     if (f) {
-        for (const y of [8, 9, 10]) {
-            if (rows[y] && f.rows[y]) {
-                const face = f.rows[y];           // 16폭 얼굴
-                rows[y] = face.slice(0, 14) + rows[y].slice(14);   // 앞 14칸만 표정으로
+        // 얼굴 눈/코 라인(y8,9,10)을 몸통의 대응 위치에 덮어씀 (오프셋 반영)
+        for (const fy of [8, 9, 10]) {
+            const by = fy + off.y;
+            if (!rows[by] || !f.rows[fy]) continue;
+            const face = f.rows[fy];              // 16폭 얼굴 라인
+            const arr = rows[by].split('');
+            for (let fx = 0; fx < 14; fx++) {     // 앞 14칸만 (얼굴 영역)
+                const bx = fx + off.x;
+                if (bx < arr.length && face[fx] !== undefined) arr[bx] = face[fx];
             }
+            rows[by] = arr.join('');
         }
     }
     const tmp = { w: s.w, h: s.h, rows };
@@ -2437,7 +2447,10 @@ function setupBubbleDrag() {
                 const nx = parseInt(bubbleEl.style.left, 10), ny = parseInt(bubbleEl.style.top, 10);
                 _shimeji.x = isNaN(nx) ? _shimeji.x : nx;
                 _shimeji.y = isNaN(ny) ? _shimeji.y : ny;
-                // 놓으면 중력으로 툭 떨어져서 바닥에 착지
+                // 놓으면 일정 거리(SHIMEJI_DROP)만 툭 떨어지고 그 자리 유지 (바닥은 넘지 않음)
+                const hgt = bubbleEl.offsetHeight || 34;
+                const floorY = window.innerHeight - hgt - 4;
+                _shimeji.fallTo = Math.min(floorY, _shimeji.y + SHIMEJI_DROP);
                 _shimeji.state = 'fall'; _shimeji.vy = 0;
                 _shimeji.lastT = performance.now();
                 if (wasHang && EXT.mascot === 'tiger') shimejiSetSprite('hang');   // 떨어지는 동안 매달린 자세 유지
@@ -2475,9 +2488,10 @@ function collapseToBubble() {
 }
 
 // ── 시메지 걷기 ──
-let _shimeji = { on: false, raf: null, dir: 1, state: 'walk', until: 0, x: 0, y: 0, vy: 0, lastT: 0, frame: 1, frameT: 0, idleSince: 0 };
+let _shimeji = { on: false, raf: null, dir: 1, state: 'walk', until: 0, x: 0, y: 0, vy: 0, lastT: 0, frame: 1, frameT: 0, idleSince: 0, perch: null, fallTo: null };
 const SHIMEJI_SPEED = 22;           // px/초 (느긋하게)
 const SHIMEJI_GRAV = 1400;          // 중력 가속도 px/s² (놓으면 툭 떨어짐)
+const SHIMEJI_DROP = 70;            // 놓으면 떨어지는 거리(px) — 바닥까지가 아니라 이만큼만
 const SHIMEJI_FRAME_MS = 200;       // 걷기 프레임 교차 간격
 const SHIMEJI_DOZE_MS = 90000;      // 이 시간 동안 안 만지면 졸기(앉아서)
 const SHIMEJI_ACTIONS = ['sit', 'look', 'sleep'];   // 가끔 하는 행동
@@ -2501,16 +2515,18 @@ function startShimeji() {
 }
 // 시메지 상태별 스프라이트 (호랑이만 옆모습/앉기 몸통, 나머지는 얼굴)
 // 시메지 스프라이트 크기(가로 기준). 호랑이는 새 그림 세트 사용
-const TG_SIZE = { stand: 46, walk1: 46, walk2: 46, sit: 44, lie: 54, hang: 26, frontsit: 38, face: 34 };
+const TG_SIZE = { stand: 46, walk1: 46, walk2: 46, sit: 44, lie: 54, hang: 26, frontsit: 36, face: 34 };
 function shimejiSetSprite(state, expr) {
     if (!bubbleEl) return;
     const isTiger = EXT.mascot === 'tiger';
     const prevBottom = bubbleEl.getBoundingClientRect().bottom;
     if (isTiger) {
-        // 표정을 보여줘야 하는 순간엔 얼굴, 아니면 포즈 스프라이트
-        if (expr && SPR_TG_FACE[expr]) bubbleEl.innerHTML = tgSVG(expr, TG_SIZE.face);
-        else if (SPR_TG[state]) bubbleEl.innerHTML = tgSVG(state, TG_SIZE[state] || 46);
-        else bubbleEl.innerHTML = tgSVG('stand', TG_SIZE.stand);
+        const body = SPR_TG[state] ? state : 'stand';   // 실제 포즈(몸통)
+        if (expr && SPR_TG_FACE[expr] && tgFaceCompatible(body)) {
+            bubbleEl.innerHTML = tgSVGExpr(body, expr, TG_SIZE[body] || 46);   // 몸통 + 표정
+        } else {
+            bubbleEl.innerHTML = tgSVG(body, TG_SIZE[body] || 46);            // 몸통만
+        }
     } else {
         bubbleEl.innerHTML = mascotSVG(34, expr);   // 다른 마스코트는 얼굴만
     }
@@ -2519,6 +2535,11 @@ function shimejiSetSprite(state, expr) {
     const ny = prevBottom - nh;
     _shimeji.y = ny;
     bubbleEl.style.top = ny + 'px';
+}
+// 정면 얼굴(눈 y8~10, x0~14)과 눈 위치가 같아 표정을 얹을 수 있는 포즈들
+// (frontsit은 제외 — 착지 시 멍한 원본 표정 그대로 두는 게 귀여움)
+function tgFaceCompatible(bodyKey) {
+    return bodyKey === 'stand' || bodyKey === 'walk1' || bodyKey === 'walk2' || bodyKey === 'sit';
 }
 function stopShimeji() {
     _shimeji.on = false;
@@ -2533,20 +2554,24 @@ function shimejiTick(now) {
     const sz = bubbleEl.offsetWidth || 40;
     const hgt = bubbleEl.offsetHeight || 34;
     const floorY = window.innerHeight - hgt - 4;
-    // ── 중력: 공중이면 떨어짐 ──
+    // 머무는 높이(perch): 놓은 자리에서 일정 거리 떨어진 지점. null이면 바닥
+    const restY = (_shimeji.perch == null) ? floorY : Math.min(_shimeji.perch, floorY);
+    // ── 중력: 떨어지는 중이면 목표 지점까지만 낙하 ──
     if (_shimeji.state === 'fall') {
         _shimeji.vy += SHIMEJI_GRAV * dt;
         _shimeji.y += _shimeji.vy * dt;
-        if (_shimeji.y >= floorY) {           // 착지!
-            _shimeji.y = floorY; _shimeji.vy = 0;
-            _shimeji.state = 'landing'; _shimeji.until = now + 500;
+        const target = (_shimeji.fallTo != null) ? _shimeji.fallTo : floorY;
+        if (_shimeji.y >= target) {           // 착지(목표 지점 도달)!
+            _shimeji.y = target; _shimeji.vy = 0;
+            _shimeji.perch = (target < floorY - 2) ? target : null;   // 공중이면 그 높이 유지, 바닥이면 바닥모드
+            _shimeji.state = 'landing'; _shimeji.until = now + 1000;
             shimejiSetSprite('frontsit');      // 착지 → 정면 보고 앉기
             bubbleEl.classList.add('bl-land-bounce');
             setTimeout(() => {
                 if (!bubbleEl) return;
                 bubbleEl.classList.remove('bl-land-bounce');
                 if (_shimeji.state === 'landing') { _shimeji.state = 'walk'; _shimeji.until = performance.now() + 400; shimejiSetSprite('walk1'); }
-            }, 500);
+            }, 1000);
         }
         bubbleEl.style.transform = `scaleX(${-_shimeji.dir})`;
         bubbleEl.style.left = _shimeji.x + 'px'; bubbleEl.style.top = _shimeji.y + 'px';
@@ -2554,7 +2579,7 @@ function shimejiTick(now) {
         _shimeji.raf = requestAnimationFrame(shimejiTick);
         return;
     }
-    _shimeji.y = floorY;   // 평소엔 바닥에 붙어있음
+    _shimeji.y = restY;   // 평소엔 머무는 높이(바닥 또는 perch)에 붙어있음
     // 상태 전환 (착지 애니 중엔 건너뜀)
     if (now >= _shimeji.until && _shimeji.state !== 'sitfix' && _shimeji.state !== 'landing') nextShimejiState(now);
     if (_shimeji.state === 'landing') {
@@ -2590,19 +2615,18 @@ function nextShimejiState(now) {
     const isTiger = EXT.mascot === 'tiger';
     if (isTiger) {
         const hungry = (STATE.hunger != null && STATE.hunger < 30);          // 배고프면 울상
-        const dozing = (now - (_shimeji.idleSince || 0)) > SHIMEJI_DOZE_MS;  // 한참 안 만지면 졸기
         if (_shimeji.state === 'walk') {
             const r = Math.random();
-            if (dozing) {                       // 오래 방치 → 앉아서 졸기
-                _shimeji.state = 'doze'; _shimeji.until = now + 6000 + Math.random() * 6000;
-                shimejiSetSprite('sit');
-            } else if (hungry && r < 0.3) {     // 배고프면 가끔 울상
+            if (hungry && r < 0.3) {            // 배고프면 가끔 울상
                 _shimeji.state = 'rest'; _shimeji.until = now + 1800 + Math.random() * 1500;
                 shimejiSetSprite('sit', 'cry'); startCrying();
-            } else if (r < 0.22) {              // 랜덤 눕기
-                _shimeji.state = 'lie'; _shimeji.until = now + 3000 + Math.random() * 4000;
+            } else if (r < 0.16) {              // 🛌 눕기 (랜덤)
+                _shimeji.state = 'lie'; _shimeji.until = now + 4000 + Math.random() * 5000;
                 shimejiSetSprite('lie');
-            } else if (r < 0.5) {               // 랜덤 앉기
+            } else if (r < 0.30) {              // 😴 졸기 (랜덤, 앉아서)
+                _shimeji.state = 'doze'; _shimeji.until = now + 5000 + Math.random() * 6000;
+                shimejiSetSprite('sit', 'neutral');
+            } else if (r < 0.5) {               // 🐈 앉기 (랜덤)
                 _shimeji.state = 'rest'; _shimeji.until = now + 1500 + Math.random() * 2500;
                 shimejiSetSprite('sit');
             } else {                            // 계속 걷기 (방향만 가끔 전환)
@@ -3051,6 +3075,19 @@ function init() {
         setTimeout(() => { ensureMounted(); applyConsolePos(); }, 300);
         setTimeout(() => { ensureMounted(); applyConsolePos(); }, 1500);
         setTimeout(ensureMounted, 4000);
+        // 새로고침/재접속해도 시메지 유지 (켜둔 상태면 버블 모드로 자동 복원)
+        if (EXT.shimeji) {
+            const reviveShimeji = () => {
+                if (!EXT.shimeji) return;
+                // 콘솔/전체창이 떠있으면 버블(시메지) 모드로 전환
+                const fullOpen = fullEl && fullEl.style.display !== 'none' && fullEl.style.display !== '';
+                if (!fullOpen && (!bubbleEl || bubbleEl.style.display === 'none')) collapseToBubble();
+                if (bubbleEl && bubbleEl.style.display !== 'none' && !_shimeji.on) startShimeji();
+            };
+            setTimeout(reviveShimeji, 1000);
+            setTimeout(reviveShimeji, 2500);
+            setTimeout(reviveShimeji, 5000);
+        }
         setTimeout(diag, 800);
         window.addEventListener('resize', () => { ensureMounted(); applyConsolePos(); positionBubble(); });
         window.addEventListener('orientationchange', () => setTimeout(() => { applyConsolePos(); positionBubble(); }, 200));
