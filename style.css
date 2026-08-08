@@ -451,5 +451,9 @@
 @keyframes bl-heart-up { 0% { opacity: 0; transform: translate(-50%, 0) scale(.6); } 20% { opacity: 1; transform: translate(-50%, -8px) scale(1.1); } 100% { opacity: 0; transform: translate(-50%, -34px) scale(1); } }
 
 /* ── 시메지: 착지 바운스 (놓으면 폴짝 → 안착) ── */
-.bl-land-bounce { animation: bl-land .45s ease-out; }
-@keyframes bl-land { 0% { transform: translateY(-10px) scaleY(1.05); } 40% { transform: translateY(0) scaleY(.9); } 70% { transform: translateY(-3px) scaleY(1.02); } 100% { transform: translateY(0) scaleY(1); } }
+.bl-land-bounce { animation: bl-land .5s cubic-bezier(.28,.84,.42,1); transform-origin: 50% 100%; }
+@keyframes bl-land { 0% { transform: translateY(-14px) scaleY(1.08) scaleX(.94); } 35% { transform: translateY(0) scaleY(.82) scaleX(1.12); } 60% { transform: translateY(-6px) scaleY(1.04) scaleX(.98); } 80% { transform: translateY(0) scaleY(.94) scaleX(1.03); } 100% { transform: translateY(0) scaleY(1) scaleX(1); } }
+
+/* ── 시메지: 눈물 뚝뚝 (울 때) ── */
+.bl-tear-fx { position: fixed; z-index: 2147483002; width: 4px; height: 6px; border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%; background: #5a9fd6; pointer-events: none; animation: bl-tear-fall .9s ease-in forwards; }
+@keyframes bl-tear-fall { 0% { opacity: 0; transform: translateY(0) scale(.7); } 15% { opacity: 1; } 100% { opacity: 0; transform: translateY(22px) scale(1); } }

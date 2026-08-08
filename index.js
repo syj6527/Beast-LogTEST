@@ -1,12 +1,14 @@
-// 🐯 비스트로그 (Beast Log) v0.51.0 — 상태 0~100%(😊기분·🍖배고픔·⚡체력). 표정: 눈물/자는표정/병아리·판다 전용. 밥: 60%까지 무료+유료메뉴 고정. 작명소(첫무료/변경5만). 펫이름 세로배치+진화명병기.
+// 🐯 비스트로그 (Beast Log) v0.53.0 — 상태 0~100%(😊기분·🍖배고픔·⚡체력). 표정: 눈물/자는표정/병아리·판다 전용. 밥: 60%까지 무료+유료메뉴 고정. 작명소(첫무료/변경5만). 펫이름 세로배치+진화명병기.
 // 경험치: 레벨곡선 60+lv²×15, 선택별 고정값(협력8/도움6/함께4/기웃2/시비-3), 상태별 효율(잘돌볼수록↑), backfire(18%). 알바: {{char}}가 직접(그룹/1카드 다역 대응).
 // 아이템: RP맥락 드랍(등장소품/로어북/맥락생성)+사연(lore)+떡밥(조우유도), 희귀도⚪🟢🔵🟣, bond(💝 {{char}}/{{user}} 연관 깊을수록 귀함). 도감(인물/생물/사물).
 // v0.49 추가: 캐릭터별 저장(새챗에도 데이터 유지), 턴=자체카운터(시뮬 자동출현 폭발 수정), 자동출현 조우/상황 반반 3~4턴, 목록 미리보기3개+전체보기, {{char}}/{{user}} 매크로 치환.
 // v0.50 추가: 마스코트 9종 전면 재디자인 + 표정시스템 정비(호기심/병아리·판다·토끼 전용), 진화 3단계 색/디테일 갱신(백호왕관·구미호·손오공머리띠·현자단안경·도사판다 등), 🎰 즉석복권(깽판 알바 보완책 — 알바비≤1.5만 해금, 1천원/장, 알바당 3장, 꽝90%, {{char}}보이스).
 // v0.51 추가: 🚶 시메지 모드(세팅 토글) — 배경 없이 캐릭터만 바닥 어슬렁+가끔 행동, 탭→✋🍖📖 아이콘+호랑이 앉기(1초 여유 복귀), ✋쓰다듬기 기분+4/💗하트/바운스, 잡아 놓으면 그 자리 고정(그 높이서 좌우 이동), 복권 해금 5만원 이하로 완화.
+// v0.52 추가: 시메지 호랑이 옆모습 걷기(네발 콩콩·진행방향 반전) + 앉기 전환, 잡아 들면 두 발 정면으로 대롱대롱 좌우 흔들, 놓으면 착지 바운스.
+// v0.53 추가: 시메지 호랑이 새 스프라이트 6종(서있기/걷기1·2/앉기/눕기/목잡힘) + 표정 3종(웃음/무표정/울기), 걷기 프레임 교차 애니, 랜덤 앉기·눕기, 방치 시 졸기, 배고프면 울상, 쓰다듬/밥 주면 웃음, 들어올리면 목덜미 잡힌 자세, 놓으면 중력 낙하+착지 바운스.
 // 버전 3곳 동시 갱신: (1) 이 주석, (2) BEASTLOG_VERSION, (3) manifest.json
 
-const BEASTLOG_VERSION = '0.51.0';
+const BEASTLOG_VERSION = '0.53.0';
 const MODULE = 'beast_log';
 let LAST_ERROR = '';
 const DBG_LOG = [];
@@ -139,6 +141,69 @@ const PANDA_TEAR = [[5,10,TEAR],[9,10,TEAR]];   // 우는 표정 눈물 (기본 
 const SPR_CHICK2 = { w: 16, h: 15, pal: { X: '#ffed24', O: '#f6b94d' }, rows: ['....KKKKKKK.....','...KXXXXXXXK....','..KXXXXXXXXXK...','.KXXXXXXXXXXXK..','.KXXXXXXXXXXXK..','.KXXXKXXXKXXXK..','KXXXXKXXXKXXXKK.','KXXXXXXOXXXXXXK.','KXXXXXXXXXXXXXK.','KXXXXXXXXXXXXXK.','KXXXXXXXXXXXXXK.','KXXXXXXXXXXXXXK.','.KXXXXXXXXXXXK..','..KKKKKKKKKKK...','................'] };  // 2단계: 자란 병아리 (사용자 그림)
 const SPR_CHICK3 = { w: 16, h: 15, pal: { R: '#e2483a', C: '#fdf6e3', O: '#f6b94d' }, rows: ['.....RRRR.......','.....RRRRRR.....','..KKKKKKKKKKK...','.KCCCCCCCCCCCK..','.KCCCCCCCCCCCK..','.KCCKCCCCCKCCK..','KCCCCKCCCKCCCKK.','KCCCCCCOCCCCCCK.','KCCCCCCCCCCCCCK.','KCCCCCCCCCCCCCK.','KCCCCCCCCCCCCCK.','KCCCCCCCCCCCCCK.','.KCCCCCCCCCCCK..','..KKKKKKKKKKK...','................'] };  // 3단계: 닭 (사용자 그림, 빨강볏)
 // 🐯 호랑이 앉은 모습 (시메지 상호작용용, 사용자 그림 16×22)
+// 🐯 호랑이 시메지 스프라이트 세트 (사용자 그림) — 전부 '왼쪽 보는' 방향
+const TIGER_PAL = { O: '#f6b94d', C: '#fdf6e3', B: '#7a4f28', T: '#5a9fd6' };
+const SPR_TG = {
+    stand: { w: 29, h: 23, rows: ['.KKK.......KKK...............','KOCCK.....KOCCK..............','KOCCKKKKKKKOCCK..............','KOOOOOBOOOOOOOK..............','.KOOOBBBOOOOOK............KK.','.KOOOOBOOOOOOK...........KBK.','KOOOOBBBOOOOOOK..........KOK.','KBBOOOOOOOOOBBK.........KBOK.','KOOOKOOOKOOOOOK.........KOK..','KBBOKOOOKOOOBBK........KBOK..','KOOOOCKCOOOOOOK.......KBOK...','KOOOCCCCCOOOOOKKKKKKKKKOOK...','.KOOCCCCCOOOOKOBBOOBBOOOK....','..KKKKKKKKKKKOOBBBOBBBOOK....','...KOCCCCCCOOOOOBBOOBBOOK....','...KOCCCCCCCOOOOOBOOOBOOK....','...KOOCCCCCCOOOOOOOOOOOOK....','...KOOOOOOOOOOOCCCCOOOOOK....','...KOOOOKOOOOKCCCCCOOOOOK....','...KOOOOKOOOOKKKKKKOOOOOK....','...KOOOOKOOOOK..KOOKOOOOK....','...KCCCCKCCCCK..KCCKCCCOK....','....KKKK.KKKK....KK.KKKK.....'] },
+    walk1: { w: 29, h: 23, rows: ['.KKK.......KKK...............','KOCCK.....KOCCK..............','KOCCKKKKKKKOCCK..............','KOOOOOBOOOOOOOK..............','.KOOOBBBOOOOOK............KK.','.KOOOOBOOOOOOK...........KBK.','KOOOOBBBOOOOOOK..........KOK.','KBBOOOOOOOOOBBK.........KBOK.','KOOOKOOOKOOOOOK.........KOK..','KBBOKOOOKOOOBBK........KBOK..','KOOOOCKCOOOOOOK.......KBOK...','KOOOCCCCCOOOOOKKKKKKKKKOOK...','.KOOCCCCCOOOOKOBBOOBBOOOK....','..KKKKKKKKKKKOOBBBOBBBOOK....','...KOCCCCCCOOOOOBBOOBBOOK....','...KOCCCCCCCOOOOOBOOOBOOK....','...KOOCCCCCCOOOOOOOOOOOOK....','..KKOOOOOOOOOOOCCCCCOOOOK....','..KOOOOOKOOOOKCCCCCCOOOOOK...','.KCOOOOOKOOOOKKKKKKKKOOOOOK..','.KCCCOOKKOOOOK..KOOOKKOOOCK..','..KKKKK.KCCCCK..KCCCK.KKCCK..','.........KKKK....KKK...KKK...'] },
+    walk2: { w: 29, h: 23, rows: ['.KKK.......KKK...............','KOCCK.....KOCCK..............','KOCCKKKKKKKOCCK..............','KOOOOOBOOOOOOOK..............','.KOOOBBBOOOOOK...............','.KOOOOBOOOOOOK.............KK','KOOOOBBBOOOOOOK...........KBK','KBBOOOOOOOOOBBK...........KOK','KOOOKOOOKOOOOOK..........KBOK','KBBOKOOOKOOOBBK..........KOK.','KOOOOCKCOOOOOOK........KKBOK.','KOOOCCCCCOOOOOKKKKKKKKKKBOK..','.KOOCCCCCOOOOKOBBOOBBOOOOK...','..KKKKKKKKKKKOOBBBOBBBOOK....','...KOCCCCCCOOOOOBBOOBBOOK....','...KOCCCCKCCOOOOOBOOOBOOK....','...KOOCCCKCCOOOOOOOOOOOOK....','...KOOOKKOOOOOOCCCCCOOOOK....','...KOOKOOOOOOKCCCCCCOOOOK....','...KOOKCOOOOOKKKKKKKOOOOK....','...KCCKCCOOOOK.KCCOKCCCCK....','...KCCCKKKKKK...KKKKCCCCK....','....KKKK............KKKK.....'] },
+    sit:   { w: 28, h: 23, rows: ['.KKK.......KKK..............','KOCCK.....KOCCK.............','KOCCKKKKKKKOCCK.............','KOOOOOBOOOOOOOK.............','.KOOOBBBOOOOOK..............','.KOOOOBOOOOOOK..............','KOOOOBBBOOOOOOK.............','KBBOOOOOOOOOBBK.............','KOOOKOOOKOOOOOK.............','KBBOKOOOKOOOBBK.............','KOOOOCKCOOOOOOK.............','KOOOCCCCCOOOOOK.............','.KOOCCCCCOOOOKOKK...........','..KKKKKKKKKKKOOBBKK......KKK','...KOCCCCCCOOOOOBOBK....KBBK','...KOCCCCCCCOOOOOOBKK...KBOK','...KOOCCCCCCOOOOOOOBK..KKOKK','...KOOOOOOOOOKOOKKOOK..KBOK.','...KOOOOKOOOOKCKOOOOKKKKBOK.','...KOOOOKOOOOKKKOOOOKOBBOOK.','...KOOOOKOOOOKCOOOOOKOOOKK..','...KCCCCKCCCCKCCOOOOKKKKK...','....KKKK.KKKKKKKKKKK........'] },
+    lie:   { w: 38, h: 16, rows: ['................KKK......KKK..........','.KKK..KKKKKK...KOCCK....KCCCK.........','KCCOKKOBOBOOK..KOCCK....KCCCK.........','KCCOOOOBOBOOOKKOOCK....KKOOOK.........','KOOOOOOOOOOOOKKOOOKKKKKKOOOOK.........','.KKOOOOOOOOOOKOOCCCCCCCOOOOKK.........','..KOOOOOOOOOOKOCKKKKCCCCOOKKKK...KKK..','..KOOOOOKKOCCKCKCCCKCCCCCKCCCK...KBBK.','..KOBOBOOOCCCKCKOOCKCCCCCKCCCK...KBBK.','..KBBBBOOOKCCKCKOOKCCCCKKKOOOK....KOOK','..KOBOBOOOCCCKOKOOKOOOOKOOOOOK....KOOK','.KKOOOOOKKOCCKOKOOKOOOOOOOOOOK...KBBBK','KCCOOOOOOOOOOKOOOOOBBOOOBBOOKKKKKOOBK.','KCCOOOOBOBOOOKOOOBBBOOBBBOOOKBBOBBOOK.','KOOOKKOBOBOOKOOOOBBOOOBBOOOKOOBOOBKK..','.KKK..KKKKKKKKKKKKKKKKKKKKKKKKKKKK....'] },
+    frontsit: { w: 25, h: 25, rows: ['...KKK.......KKK.........','..KOCCK.....KOCCK........','..KOCCKKKKKKKOCCK........','..KOOOOOOBOOOOOOK........','...KOOOOBBBOOOOK.........','...KOOOOOBOOOOOK.........','..KOOOOOBBBOOOOOK........','..KBBOOOOOOOOOBBK........','..KOOOOKOOOKOOOOK........','..KBBOOKOOOKOOBBK........','..KOOOOOCKCOOOOOK........','..KOOOOCCCCCOOOOK........','...KOOOCCCCCOOOK.......KK','..KKKKKKKKKKKKKKK.....KBK','..KOOOOOCCCOOOOOK.....KOK','.KBBBOOCCCCCOOBBBK...KBOK','.KBBOOOCCCCCOOOBBK...KOOK','.KOOOOOCCCCCOOOOOK..KBOK.','.KBBBOOOCCCOOOBBBK..KBOK.','.KBBOOOOOOOOOOOBBKKKBOK..','.KOOOOOOOKOOOOOOOKOOOOK..','KOOOKOOOOKOOOOKOOOOOKK...','KCOOKOCCCKCCCOKOOCKK.....','KCCOKOCCCKCCCOKOCCK......','.KKKKKKKK.KKKKKKKK.......'] },
+    hang:  { w: 17, h: 38, rows: ['.KKK.......KKK...','KOCCK.....KOCCK..','KOCCKKKKKKKOCCK..','KOOOOOBOOOOOOOK..','.KOOOBBBOOOOOK...','.KOOOOBOOOOOOK...','KOOOOBBBOOOOOOK..','KBBOOOOOOOOOBBKK.','KOOOKOOOKOOOOOKOK','KBBOKOOOKOOOBBKOK','KOOOOCKCOOOOOOKBK','KOOOCCCCCOOOOOKBK','.KOOCCCCCOOOOKOOK','..KKKKKKKKKKKOOOK','...KOOOOOOOOOOBOK','..KKOOKOCKOOOKBBK','..KOOOKCCKOOOKOOK','..KOOOKCCKOOOKOOK','..KCCCKCCKCCCKBOK','..KCCCKCCKCCCKBBK','...KKKOCCCKKKOBBK','....KOOCCCCCCOOOK','....KOOCCCCCCOOOK','....KOOOCCCCOOOOK','....KOOOOOOOOOOOK','....KOOOOKKKOOOOK','....KOOOK.KKKOOOK','....KOOOK.KOKOOOK','....KOOOK.KBKCCCK','....KCCCK.KBKCCCK','....KCCCK.KOKCCCK','.....KKK..KOOKKK.','..........KBOK...','..........KBBK...','..........KOOK...','..........KBBK...','..........KBBK...','...........KK....'] },
+};
+// 얼굴 표정 (16x14) — 시메지 표정 표시용
+const SPR_TG_FACE = {
+    happy:   { w: 16, h: 14, rows: ['.KKK.......KKK..','KOCCK.....KOCCK.','KOCCKKKKKKKOCCK.','KOOOOOBOOOOOOOK.','.KOOOBBBOOOOOK..','.KOOOOBOOOOOOK..','KOOOOBBBOOOOOOK.','KBBOOOOOOOOOBBK.','KOOOKOOOKOOOOOK.','KBBKOKOKOKOOBBK.','KOOOOCKCOOOOOOK.','KOOOCCCCCOOOOOK.','.KOOCCCCCOOOOK..','..KKKKKKKKKKK...'] },
+    neutral: { w: 16, h: 14, rows: ['.KKK.......KKK..','KOCCK.....KOCCK.','KOCCKKKKKKKOCCK.','KOOOOOBOOOOOOOK.','.KOOOBBBOOOOOK..','.KOOOOBOOOOOOK..','KOOOOBBBOOOOOOK.','KBBOOOOOOOOOBBK.','KOOOOOOOOOOOOOK.','KBBKKKOKKKOOBBK.','KOOOOCKCOOOOOOK.','KOOOCCCCCOOOOOK.','.KOOCCCCCOOOOK..','..KKKKKKKKKKK...'] },
+    cry:     { w: 16, h: 14, rows: ['.KKK.......KKK..','KOCCK.....KOCCK.','KOCCKKKKKKKOCCK.','KOOOOOBOOOOOOOK.','.KOOOBBBOOOOOK..','.KOOOOBOOOOOOK..','KOOOOBBBOOOOOOK.','KBBOOOOOOOOOBBK.','KOOOKOOOKOOOOOK.','KBBOTOOOOOOOBBK.','KOOOTCKCTOOOOOK.','KOOOCCCCTOOOOOK.','.KOOCCCCCOOOOK..','..KKKKKKKKKKK...'] },
+};
+// 걷기/서있기 몸통에 표정 얹기 (눈줄 y8~9, 코줄 y10만 얼굴표정에서 가져옴)
+function tgSVGExpr(bodyKey, expr, width) {
+    const s = SPR_TG[bodyKey];
+    const f = SPR_TG_FACE[expr];
+    if (!s) return tgSVG(bodyKey, width);
+    // 몸통 rows 복사 후, 앞쪽 얼굴 눈/코 라인 교체 (좌표 동일: y8,y9,y10 / x0~14)
+    const rows = s.rows.slice();
+    if (f) {
+        for (const y of [8, 9, 10]) {
+            if (rows[y] && f.rows[y]) {
+                const face = f.rows[y];           // 16폭 얼굴
+                rows[y] = face.slice(0, 14) + rows[y].slice(14);   // 앞 14칸만 표정으로
+            }
+        }
+    }
+    const tmp = { w: s.w, h: s.h, rows };
+    let rects = '';
+    for (let y = 0; y < tmp.h; y++) {
+        let x = 0; const r = tmp.rows[y] || '';
+        while (x < tmp.w) {
+            const c = x < r.length ? r[x] : '.';
+            if (c === '.') { x++; continue; }
+            let run = 1; while (x + run < tmp.w && (x + run < r.length ? r[x + run] : '.') === c) run++;
+            const col = c === 'K' ? BL_INK : (TIGER_PAL[c] || BL_INK);
+            rects += '<rect x="' + x + '" y="' + y + '" width="' + run + '" height="1" fill="' + col + '"/>';
+            x += run;
+        }
+    }
+    return '<svg width="' + width + '" height="' + Math.round(width * tmp.h / tmp.w) + '" viewBox="0 0 ' + tmp.w + ' ' + tmp.h + '" shape-rendering="crispEdges">' + rects + '</svg>';
+}
+function tgSVG(key, width) {
+    const s = SPR_TG[key] || SPR_TG_FACE[key];
+    if (!s) return '';    let rects = '';
+    for (let y = 0; y < s.h; y++) {
+        let x = 0; const r = s.rows[y] || '';
+        while (x < s.w) {
+            const c = x < r.length ? r[x] : '.';
+            if (c === '.') { x++; continue; }
+            let run = 1; while (x + run < s.w && (x + run < r.length ? r[x + run] : '.') === c) run++;
+            const col = c === 'K' ? BL_INK : (TIGER_PAL[c] || BL_INK);
+            rects += '<rect x="' + x + '" y="' + y + '" width="' + run + '" height="1" fill="' + col + '"/>';
+            x += run;
+        }
+    }
+    return '<svg width="' + width + '" height="' + Math.round(width * s.h / s.w) + '" viewBox="0 0 ' + s.w + ' ' + s.h + '" shape-rendering="crispEdges">' + rects + '</svg>';
+}
 const SPR_TIGER_SIT = { w: 16, h: 22, pal: { O: '#f6b94d', C: '#fdf6e3', B: '#7a4f28' }, rows: ['.KKK.......KKK..','KOCCK.....KOCCK.','KOCCKKKKKKKOCCK.','KOOOOOOBOOOOOOK.','.KOOOOBBBOOOOK..','.KOOOOOBOOOOOK..','KOOOOOOOOOOOOOK.','KBBOOKOOOKOOBBK.','KOOOOKOOOKOOOOK.','KBBOOOOOOOOOBBK.','KOOOOOCKCOOOOOK.','KOOOOCCCCCOOOOK.','.KOOOCCCCCOOOK..','..KKKKKKKKKKK...','.KKOOOOOOOOOKK..','.KBOOOCCCOOOBK..','.KOBBCCCCCBBOK..','.KOOOCCCCCOOOK..','.KBBBOCCCOBBBK..','KOKOOKCCCKOOKOK.','KOKCCKOOOKCCKOK.','KKKKKKKKKKKKKKK.'] };
 function tigerSitSVG(width) {
     const s = SPR_TIGER_SIT;
@@ -702,6 +767,7 @@ function onFeed() {
     if (hunger < FEED_FREE_CAP) {
         STATE.pendingFeed = null;   // 무료 구간 진입 → 특식 메뉴 리셋
         STATE.hunger = clamp0100(Math.min(FEED_FREE_CAP, hunger + FEED_FREE_GAIN));
+        playFeedReaction();
         STATE.mood = clamp0100((STATE.mood || 0) + 5);
         saveState(STATE); renderAll();
         showNote('🍖 밥 주기', `'${pick(FEED_FOOD)}'`, pick(FEED_LINE));
@@ -722,6 +788,7 @@ function onFeed() {
     showConfirm('🍖 특식 구매', `'${menu.food}'\n배고픔 +${menu.gain}% · ${fmtMoney(menu.price)}\n\n사서 먹일까요?`, () => {
         STATE.money = (STATE.money || 0) - menu.price;
         STATE.hunger = clamp0100((STATE.hunger || 0) + menu.gain);
+        playFeedReaction();
         STATE.mood = clamp0100((STATE.mood || 0) + 8);
         STATE.hp = clamp0100((STATE.hp || 0) + 4);
         STATE.pendingFeed = null;   // 구매 완료 → 메뉴 해제
@@ -754,17 +821,60 @@ function spawnHeart() {
     (document.documentElement || document.body).appendChild(h);
     setTimeout(() => h.remove(), 1100);
 }
+// 눈물 방울 뚝뚝 (우는 동안 주기적으로)
+let _tearTimer = null;
+function spawnTear() {
+    if (!bubbleEl) return;
+    const r = bubbleEl.getBoundingClientRect();
+    // 양쪽 눈 대략 위치(가로 35%, 62%)에서 번갈아 떨어짐
+    for (const fx of [0.36, 0.62]) {
+        const t = document.createElement('div');
+        t.className = 'bl-tear-fx';
+        t.style.left = (r.left + r.width * fx) + 'px';
+        t.style.top = (r.top + r.height * 0.42) + 'px';
+        (document.documentElement || document.body).appendChild(t);
+        setTimeout(() => t.remove(), 950);
+    }
+}
+function startCrying() {
+    if (_tearTimer) return;
+    spawnTear();
+    _tearTimer = setInterval(() => {
+        // 우는 상태가 아니면 중단
+        const crying = _shimeji.on && (STATE.hunger != null && STATE.hunger < 30);
+        if (!crying || !bubbleEl) { stopCrying(); return; }
+        spawnTear();
+    }, 850);
+}
+function stopCrying() {
+    if (_tearTimer) { clearInterval(_tearTimer); _tearTimer = null; }
+}
+function playFeedReaction() {   // 밥 먹으면 😊 웃음
+    if (!bubbleEl || !EXT.shimeji || EXT.mascot !== 'tiger') return;
+    stopCrying();   // 밥 먹었으니 눈물 뚝
+    _shimeji.idleSince = performance.now();
+    shimejiSetSprite('sit', 'happy');
+    _shimeji.state = 'rest'; _shimeji.until = performance.now() + 2000;
+    bubbleEl.classList.add('bl-pet-bounce');
+    spawnHeart();
+    setTimeout(() => { if (bubbleEl) bubbleEl.classList.remove('bl-pet-bounce'); }, 900);
+}
 function playPetReaction() {
     if (bubbleEl && bubbleEl.style.display !== 'none') {
-        const sitting = _shimeji.state === 'sitfix';   // 앉은 상태(아이콘 열림)면 앉은 채로 바운스
-        if (!sitting) bubbleEl.innerHTML = mascotSVG(34, 'happy');   // 걷기 중이면 웃는 얼굴
+        _shimeji.idleSince = performance.now();   // 만졌으니 졸기 타이머 리셋
+        if (EXT.shimeji && EXT.mascot === 'tiger') {
+            shimejiSetSprite('sit', 'happy');     // 😊 웃는 얼굴
+            _shimeji.state = 'rest'; _shimeji.until = performance.now() + 1600;
+        } else if (_shimeji.state !== 'sitfix') {
+            bubbleEl.innerHTML = mascotSVG(34, 'happy');
+        }
         bubbleEl.classList.add('bl-pet-bounce');
         spawnHeart();   // 💗 하트 뿅
         if (_petAnimTO) clearTimeout(_petAnimTO);
         _petAnimTO = setTimeout(() => {
             if (!bubbleEl) return;
             bubbleEl.classList.remove('bl-pet-bounce');
-            if (_shimeji.state !== 'sitfix') bubbleEl.innerHTML = mascotSVG(34);
+            if (!EXT.shimeji && _shimeji.state !== 'sitfix') bubbleEl.innerHTML = mascotSVG(34);
         }, 900);
     }
 }
@@ -2221,7 +2331,7 @@ function enterSitMode() {
     if (_sitExitTO) { clearTimeout(_sitExitTO); _sitExitTO = null; }   // 복귀 대기 중 다시 탭 → 취소
     _shimeji.state = 'sitfix';
     // 호랑이면 앉은 모습(몸통), 다른 동물은 얼굴 그대로 (호랑이만 몸통 테스트 중)
-    if (EXT.mascot === 'tiger') shimejiSwapSprite(tigerSitSVG(34));
+    if (EXT.mascot === 'tiger') shimejiSwapSprite(tgSVG('sit', TG_SIZE.sit));
     bubbleEl.style.transform = `scaleX(${_shimeji.dir})`;
 }
 function exitSitMode() {
@@ -2277,12 +2387,12 @@ function closeBubbleActions() {
 let _hangRAF = null, _hangT0 = 0;
 function startHangWobble() {
     if (!bubbleEl || _hangRAF) return;
-    if (EXT.mascot === 'tiger') bubbleEl.innerHTML = tigerHangSVG(30);   // 두 발로 선 모습
+    if (EXT.mascot === 'tiger') { const b = bubbleEl.getBoundingClientRect().bottom; bubbleEl.innerHTML = tgSVG('hang', TG_SIZE.hang); const nh = bubbleEl.offsetHeight || 34; bubbleEl.style.top = (b - nh) + 'px'; }   // 목덜미 잡힌 모습
     _hangT0 = performance.now();
     const tick = (now) => {
         if (!_bubbleDragging) { _hangRAF = null; return; }
         const t = (now - _hangT0) / 1000;
-        const ang = Math.sin(t * 5) * 10;   // 좌우 ±10도 가볍게 대롱대롱
+        const ang = Math.sin(t * 5) * 10;   // 좌우 ±10도 대롱대롱
         bubbleEl.style.transform = `rotate(${ang}deg)`;
         bubbleEl.style.transformOrigin = '50% 15%';   // 위쪽(목덜미) 잡힌 것처럼
         _hangRAF = requestAnimationFrame(tick);
@@ -2325,17 +2435,12 @@ function setupBubbleDrag() {
             EXT.bubblePos = { left: parseInt(bubbleEl.style.left, 10), top: parseInt(bubbleEl.style.top, 10) }; saveExt();
             if (EXT.shimeji && _shimeji.on) {
                 const nx = parseInt(bubbleEl.style.left, 10), ny = parseInt(bubbleEl.style.top, 10);
-                const sz = bubbleEl.offsetWidth || 40;
-                const floorY = window.innerHeight - sz - 4;
                 _shimeji.x = isNaN(nx) ? _shimeji.x : nx;
-                if (!isNaN(ny) && ny < floorY - 50) _shimeji.perch = ny;   // 공중에 놓음 → 그 자리 고정
-                else _shimeji.perch = null;                                 // 바닥 근처 → 바닥 걷기 재개
-                _shimeji.state = 'walk'; _shimeji.until = performance.now() + 400;   // 놓으면 곧 다시 걷기
-                shimejiSetSprite('walk');
-                if (wasHang) {   // 들고 있다 놓음 → 착지 폴짝
-                    bubbleEl.classList.add('bl-land-bounce');
-                    setTimeout(() => { if (bubbleEl) bubbleEl.classList.remove('bl-land-bounce'); }, 460);
-                }
+                _shimeji.y = isNaN(ny) ? _shimeji.y : ny;
+                // 놓으면 중력으로 툭 떨어져서 바닥에 착지
+                _shimeji.state = 'fall'; _shimeji.vy = 0;
+                _shimeji.lastT = performance.now();
+                if (wasHang && EXT.mascot === 'tiger') shimejiSetSprite('hang');   // 떨어지는 동안 매달린 자세 유지
             }
         }
     };
@@ -2370,8 +2475,11 @@ function collapseToBubble() {
 }
 
 // ── 시메지 걷기 ──
-let _shimeji = { on: false, raf: null, dir: 1, state: 'walk', until: 0, x: 0, y: 0, lastT: 0, perch: null };
+let _shimeji = { on: false, raf: null, dir: 1, state: 'walk', until: 0, x: 0, y: 0, vy: 0, lastT: 0, frame: 1, frameT: 0, idleSince: 0 };
 const SHIMEJI_SPEED = 22;           // px/초 (느긋하게)
+const SHIMEJI_GRAV = 1400;          // 중력 가속도 px/s² (놓으면 툭 떨어짐)
+const SHIMEJI_FRAME_MS = 200;       // 걷기 프레임 교차 간격
+const SHIMEJI_DOZE_MS = 90000;      // 이 시간 동안 안 만지면 졸기(앉아서)
 const SHIMEJI_ACTIONS = ['sit', 'look', 'sleep'];   // 가끔 하는 행동
 function startShimeji() {
     if (!bubbleEl || _shimeji.on) return;
@@ -2386,18 +2494,26 @@ function startShimeji() {
     _shimeji.dir = Math.random() < 0.5 ? -1 : 1;
     _shimeji.state = 'walk'; _shimeji.until = performance.now() + 2000 + Math.random() * 3000;
     _shimeji.lastT = performance.now();
-    shimejiSetSprite('walk');   // 호랑이면 옆모습, 그 외 얼굴
+    _shimeji.frame = 1; _shimeji.frameT = performance.now(); _shimeji.idleSince = performance.now();
+    shimejiSetSprite(EXT.mascot === 'tiger' ? 'walk1' : 'walk');
     bubbleEl.style.top = _shimeji.y + 'px'; bubbleEl.style.left = _shimeji.x + 'px';
     _shimeji.raf = requestAnimationFrame(shimejiTick);
 }
 // 시메지 상태별 스프라이트 (호랑이만 옆모습/앉기 몸통, 나머지는 얼굴)
+// 시메지 스프라이트 크기(가로 기준). 호랑이는 새 그림 세트 사용
+const TG_SIZE = { stand: 46, walk1: 46, walk2: 46, sit: 44, lie: 54, hang: 26, frontsit: 38, face: 34 };
 function shimejiSetSprite(state, expr) {
     if (!bubbleEl) return;
     const isTiger = EXT.mascot === 'tiger';
     const prevBottom = bubbleEl.getBoundingClientRect().bottom;
-    if (state === 'walk' && isTiger) bubbleEl.innerHTML = tigerWalkSVG(48);   // 옆모습(넓음)
-    else if (state === 'sit' && isTiger) bubbleEl.innerHTML = tigerSitSVG(34);   // 앉기 몸통
-    else bubbleEl.innerHTML = mascotSVG(34, expr);   // 행동/기타 = 얼굴
+    if (isTiger) {
+        // 표정을 보여줘야 하는 순간엔 얼굴, 아니면 포즈 스프라이트
+        if (expr && SPR_TG_FACE[expr]) bubbleEl.innerHTML = tgSVG(expr, TG_SIZE.face);
+        else if (SPR_TG[state]) bubbleEl.innerHTML = tgSVG(state, TG_SIZE[state] || 46);
+        else bubbleEl.innerHTML = tgSVG('stand', TG_SIZE.stand);
+    } else {
+        bubbleEl.innerHTML = mascotSVG(34, expr);   // 다른 마스코트는 얼굴만
+    }
     // 발바닥(하단) 기준 정렬 — 스프라이트 높이 달라도 바닥 유지
     const nh = bubbleEl.offsetHeight || 34;
     const ny = prevBottom - nh;
@@ -2406,6 +2522,7 @@ function shimejiSetSprite(state, expr) {
 }
 function stopShimeji() {
     _shimeji.on = false;
+    stopCrying();
     if (_shimeji.raf) { cancelAnimationFrame(_shimeji.raf); _shimeji.raf = null; }
     if (bubbleEl) { bubbleEl.style.transform = ''; bubbleEl.classList.remove('bl-shimeji'); }
 }
@@ -2414,45 +2531,90 @@ function shimejiTick(now) {
     if (bubbleActionsEl || _bubbleDragging) { _shimeji.raf = requestAnimationFrame(shimejiTick); _shimeji.lastT = now; return; }  // 상호작용 중엔 멈춤
     const dt = Math.min(0.05, (now - _shimeji.lastT) / 1000); _shimeji.lastT = now;
     const sz = bubbleEl.offsetWidth || 40;
-    const floorY = window.innerHeight - sz - 4;
-    if (_shimeji.perch == null) _shimeji.y = floorY;           // 바닥 모드
-    else _shimeji.y = Math.min(_shimeji.perch, floorY);        // 놓은 자리 고정(창 줄어들면 클램프)
-    // 상태 전환
-    if (now >= _shimeji.until && _shimeji.state !== 'sitfix') nextShimejiState(now);
-    const walking = _shimeji.state === 'walk';   // 놓은 자리(공중)에서도 그 높이로 좌우 왔다갔다
-    if (walking) {
+    const hgt = bubbleEl.offsetHeight || 34;
+    const floorY = window.innerHeight - hgt - 4;
+    // ── 중력: 공중이면 떨어짐 ──
+    if (_shimeji.state === 'fall') {
+        _shimeji.vy += SHIMEJI_GRAV * dt;
+        _shimeji.y += _shimeji.vy * dt;
+        if (_shimeji.y >= floorY) {           // 착지!
+            _shimeji.y = floorY; _shimeji.vy = 0;
+            _shimeji.state = 'landing'; _shimeji.until = now + 500;
+            shimejiSetSprite('frontsit');      // 착지 → 정면 보고 앉기
+            bubbleEl.classList.add('bl-land-bounce');
+            setTimeout(() => {
+                if (!bubbleEl) return;
+                bubbleEl.classList.remove('bl-land-bounce');
+                if (_shimeji.state === 'landing') { _shimeji.state = 'walk'; _shimeji.until = performance.now() + 400; shimejiSetSprite('walk1'); }
+            }, 500);
+        }
+        bubbleEl.style.transform = `scaleX(${-_shimeji.dir})`;
+        bubbleEl.style.left = _shimeji.x + 'px'; bubbleEl.style.top = _shimeji.y + 'px';
+        bubbleEl.style.right = 'auto'; bubbleEl.style.bottom = 'auto';
+        _shimeji.raf = requestAnimationFrame(shimejiTick);
+        return;
+    }
+    _shimeji.y = floorY;   // 평소엔 바닥에 붙어있음
+    // 상태 전환 (착지 애니 중엔 건너뜀)
+    if (now >= _shimeji.until && _shimeji.state !== 'sitfix' && _shimeji.state !== 'landing') nextShimejiState(now);
+    if (_shimeji.state === 'landing') {
+        // 착지 바운스 CSS 애니가 보이도록 transform 안 건드림
+    } else if (_shimeji.state === 'walk') {
         _shimeji.x += _shimeji.dir * SHIMEJI_SPEED * dt;
         // 벽 만나면 반대로
         if (_shimeji.x <= 2) { _shimeji.x = 2; _shimeji.dir = 1; }
         if (_shimeji.x >= window.innerWidth - sz - 2) { _shimeji.x = window.innerWidth - sz - 2; _shimeji.dir = -1; }
-        // 옆모습은 '왼쪽 보는' 그림 → 오른쪽(dir=1) 이동 시 좌우반전해야 진행방향을 봄
+        // 걷기 프레임 교차 (walk1 ↔ walk2) — 상태에 맞는 표정 얹기
+        if (EXT.mascot === 'tiger' && now - _shimeji.frameT >= SHIMEJI_FRAME_MS) {
+            _shimeji.frameT = now;
+            _shimeji.frame = _shimeji.frame === 1 ? 2 : 1;
+            const hungry = (STATE.hunger != null && STATE.hunger < 30);
+            const expr = hungry ? 'cry' : null;   // 배고프면 걸으면서도 울상
+            bubbleEl.innerHTML = expr ? tgSVGExpr('walk' + _shimeji.frame, expr, TG_SIZE.walk1)
+                                      : tgSVG('walk' + _shimeji.frame, TG_SIZE.walk1);
+            if (hungry) startCrying(); else stopCrying();
+        }
+        // 그림은 '왼쪽 보는' 방향 → 오른쪽(dir=1) 이동 시 좌우반전
         const face = (EXT.mascot === 'tiger') ? -_shimeji.dir : _shimeji.dir;
-        const hop = -Math.abs(Math.sin(now / 140)) * 4;   // 콩콩 (위로 폴짝)
-        bubbleEl.style.transform = `scaleX(${face}) translateY(${hop}px)`;
-    } else if (_shimeji.state === 'rest' || _shimeji.state === 'sitfix') {
-        bubbleEl.style.transform = '';   // 앉기 = 정면 몸통, 반전 안 함
+        bubbleEl.style.transform = `scaleX(${face})`;
+    } else if (_shimeji.state === 'rest' || _shimeji.state === 'lie' || _shimeji.state === 'sitfix') {
+        bubbleEl.style.transform = '';   // 앉기/눕기는 반전 없이
     } else {
         const face = (EXT.mascot === 'tiger') ? -_shimeji.dir : _shimeji.dir;
         bubbleEl.style.transform = `scaleX(${face})`;
     }
-    bubbleEl.style.left = _shimeji.x + 'px';
-    bubbleEl.style.top = _shimeji.y + 'px';
-    bubbleEl.style.right = 'auto'; bubbleEl.style.bottom = 'auto';
+    if (_shimeji.state !== 'landing') { bubbleEl.style.left = _shimeji.x + 'px'; bubbleEl.style.top = _shimeji.y + 'px'; bubbleEl.style.right = 'auto'; bubbleEl.style.bottom = 'auto'; }
     _shimeji.raf = requestAnimationFrame(shimejiTick);
 }
 function nextShimejiState(now) {
     const isTiger = EXT.mascot === 'tiger';
     if (isTiger) {
-        // 호랑이: 걷기(옆모습) ↔ 가끔 멈춤(앉기 몸통). 얼굴 깜빡 없음
-        if (_shimeji.state === 'walk' && Math.random() < 0.35) {
-            _shimeji.state = 'rest';
-            _shimeji.until = now + 1200 + Math.random() * 1800;
-            shimejiSetSprite('sit');   // 앉은 몸통
+        const hungry = (STATE.hunger != null && STATE.hunger < 30);          // 배고프면 울상
+        const dozing = (now - (_shimeji.idleSince || 0)) > SHIMEJI_DOZE_MS;  // 한참 안 만지면 졸기
+        if (_shimeji.state === 'walk') {
+            const r = Math.random();
+            if (dozing) {                       // 오래 방치 → 앉아서 졸기
+                _shimeji.state = 'doze'; _shimeji.until = now + 6000 + Math.random() * 6000;
+                shimejiSetSprite('sit');
+            } else if (hungry && r < 0.3) {     // 배고프면 가끔 울상
+                _shimeji.state = 'rest'; _shimeji.until = now + 1800 + Math.random() * 1500;
+                shimejiSetSprite('sit', 'cry'); startCrying();
+            } else if (r < 0.22) {              // 랜덤 눕기
+                _shimeji.state = 'lie'; _shimeji.until = now + 3000 + Math.random() * 4000;
+                shimejiSetSprite('lie');
+            } else if (r < 0.5) {               // 랜덤 앉기
+                _shimeji.state = 'rest'; _shimeji.until = now + 1500 + Math.random() * 2500;
+                shimejiSetSprite('sit');
+            } else {                            // 계속 걷기 (방향만 가끔 전환)
+                _shimeji.until = now + 2500 + Math.random() * 3500;
+                if (Math.random() < 0.4) _shimeji.dir *= -1;
+            }
         } else {
             _shimeji.state = 'walk';
             _shimeji.until = now + 2500 + Math.random() * 3500;
             if (Math.random() < 0.4) _shimeji.dir *= -1;
-            shimejiSetSprite('walk');   // 옆모습
+            _shimeji.frame = 1; _shimeji.frameT = now;
+            shimejiSetSprite('walk1');
         }
         return;
     }
